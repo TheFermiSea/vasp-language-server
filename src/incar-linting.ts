@@ -31,6 +31,19 @@ export function validateIncar(doc: IncarDocument): Diagnostic[] {
         if (stmt.values.length > 0) {
             validateValueType(stmt, definition, diagnostics);
         }
+
+        // --- Easter Egg: POTIM Tempo Check ---
+        if (tagName === 'POTIM') {
+            const val = parseFloat(stmt.values[0].text);
+            if (!isNaN(val) && val > 3.0) {
+                diagnostics.push({
+                    message: `Warning: Time step is extremely fast (Presto). Please consider slowing down to Andante (0.5 - 2.0 fs) to ensure the ions can keep the beat.`,
+                    range: stmt.values[0].range,
+                    severity: DiagnosticSeverity.Warning,
+                    source: "Maestro"
+                });
+            }
+        }
     }
 
     return diagnostics;
