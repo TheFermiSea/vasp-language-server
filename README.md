@@ -35,12 +35,12 @@ Stop checking `OUTCAR` for syntax errors. Catch them as you type.
 
 | Feature | INCAR | POSCAR | POTCAR | KPOINTS |
 | :--- | :---: | :---: | :---: | :---: |
-| **Syntax Validation** | ✅ | ✅ | 🔜 | 🔜 |
-| **Type Checking** | ✅ | ✅ | - | - |
+| **Syntax Validation** | ✅ | ✅ | ✅ | ✅ |
+| **Type Checking** | ✅ | ✅ | - | ✅ |
 | **Documentation (Hover)** | ✅ | ❌ | - | - |
-| **Autocomplete** | ✅ | ❌ | - | - |
+| **Autocomplete** | ✅ | ❌ | - | ✅ |
 | **Formatting** | 🔜 | 🔜 | - | - |
-| **Cross-File Checks** | ❌ | ✅ | 🔜 | - |
+| **Cross-File Checks** | ❌ | ✅ | ✅ | - |
 
 ### 🚀 INCAR (VASP 6.5.x)
 
@@ -61,6 +61,18 @@ Stop checking `OUTCAR` for syntax errors. Catch them as you type.
 * **Consistency Check**: Ensures the number of atom coordinates matches the species counts provided in the header.
 * **Format Support**: Handles VASP 5.x (explicit species) and VASP 4.x (implicit) formats.
 * **Selective Dynamics**: Validates `T`/`F` flags when selective dynamics is enabled.
+
+### 🧪 POTCAR
+
+* **Consistency Check**: Validates that the order of potentials in `POTCAR` matches the species listed in `POSCAR`.
+* **Header Parsing**: Extracts element information from `VRHFIN` or `TITEL` fields.
+* **Diagnostics**: Reports mismatches (e.g., *POSCAR expects 'Fe', but found 'O'*).
+
+### 🌐 KPOINTS
+
+* **Grid Validation**: Ensures mesh dimensions (e.g., `4 4 4`) are valid integers.
+* **Mode Validation**: Checks for valid generation modes (Monkhorst-Pack, Gamma, Line-mode).
+* **Snippets**: Quick templates for **Monkhorst-Pack** and **Gamma-Centered** grids.
 
 ---
 
@@ -167,6 +179,7 @@ lspconfig.vasp_lsp.setup{
 #### VS Code, Emacs, Zed, etc
 
 Since this is a standard LSP server, it can be used with any generic LSP client wrapper.
+
 * **VS Code**: Use extensions like "External LSP" or "Run on Save" configured to execute the server command.
 * **Emacs**: Configure `lsp-mode` or `eglot` to register a new client for `vasp-mode`.
 * **Zed**: Add a custom language server configuration in settings.

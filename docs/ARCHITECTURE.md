@@ -21,6 +21,11 @@ src/
 ├── incar-parsing.ts    # Core Logic: Tokenizes and parses INCAR files (Tags/Values).
 ├── incar-linting.ts    # Core Logic: Validates INCAR tags against schema.
 ├── incar-tag.ts        # Data Model: Represents an INCAR tag.
+├── potcar-parsing.ts   # Core Logic: Extracts species from POTCAR headers.
+├── potcar-linting.ts   # Core Logic: Validates POTCAR against POSCAR.
+├── kpoints-parsing.ts  # Core Logic: Parses K-Point generation modes/grids.
+├── kpoints-linting.ts  # Core Logic: Validates KPOINTS integrity.
+├── structure.ts        # Data Model: Shared interfaces for VASP structures.
 ├── util.ts             # Generic helpers (string checking, etc.).
 └── data/
     └── vasp-tags.ts    # Static database of VASP 6.5.x tag definitions.
@@ -43,6 +48,10 @@ src/
 - **INCAR (`incar-parsing.ts`)**:
   - **Philosophy**: Free-format key-value pairs (`TAG = VALUE`).
   - **Mechanism**: Tokenizer handles semicolons, comments (`#`, `!`), and line continuations (`\`). Groups tokens into logical statements.
+- **POTCAR (`potcar-parsing.ts`)**:
+  - Extracts `VRHFIN` or `TITEL` headers to identify atomic species.
+- **KPOINTS (`kpoints-parsing.ts`)**:
+  - Parses generation mode (Line 3) and grid dimensions (Line 4).
 
 ### 3. The Linters
 
@@ -52,6 +61,11 @@ src/
   - Validates against `src/data/vasp-tags.ts`.
   - Checks types (Int, Float, Bool, String) and valid string options.
   - Refuses unknown tags by default (warns).
+- **POTCAR (`potcar-linting.ts`)**:
+  - Cross-references extracted species with `POSCAR` (if present) to detect order mismatches.
+- **KPOINTS (`kpoints-linting.ts`)**:
+  - Validates that grid dimensions are strictly integers.
+  - Checks for recognized generation modes (Monkhorst-Pack, Gamma, etc.).
 
 ### 4. Utilities (`util.ts`)
 

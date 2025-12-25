@@ -8,7 +8,17 @@
     "build": "tsc",
     "watch": "tsc -w"
   },
-  "keywords": [],
+  "keywords": [
+    "vasp",
+    "lsp",
+    "language-server",
+    "scientific-computing",
+    "dft",
+    "incar",
+    "poscar",
+    "potcar",
+    "kpoints"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
