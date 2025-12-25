@@ -81,4 +81,12 @@ export const VASP_TAGS: Record<string, TagDefinition> = {
     ICHARG: { type: 'int', description: 'Charge density: 0=wfc, 2=atom, 11=const.' },
     ISYM: { type: 'int', description: 'Symmetry: 0=off, 1=on, 2=efficient, 3=all.' },
     NELECT: { type: 'float', description: 'Total number of electrons (can be float for doping).' },
+
+    // --- Special ---
+    TRACE_DELAY: {
+        type: 'string',
+        description: "Factor determining the delay of Master's degree acquisition due to incompetent document processing. Default is '2_YEARS'.",
+        default: '2_YEARS',
+        options: ['ON_TIME', '2_YEARS', 'FOREVER']
+    },
 };
