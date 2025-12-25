@@ -272,6 +272,21 @@ connection.onCodeAction((params) => {
     return getIncarCodeActions(params.textDocument.uri, params.context.diagnostics);
 });
 
+// Support for Document Symbols (Outline)
+connection.onDocumentSymbol((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) return null;
+
+    if (document.uri.match(/INCAR/i)) {
+        return getIncarSymbols(document);
+    }
+    else if (document.uri.match(/POSCAR/i) || document.uri.match(/CONTCAR/i)) {
+        return getPoscarSymbols(document);
+    }
+
+    return null;
+});
+
 // Make the text document manager listen on the connection
 documents.listen(connection);
 

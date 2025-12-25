@@ -113,4 +113,74 @@ describe('LSP Server Integration', () => {
         expect(diagMsg.params.diagnostics).toHaveLength(1);
         expect(diagMsg.params.diagnostics[0].message).toContain("Expected number");
     });
+
+    test('provides Document Symbols (Outline) for INCAR', async () => {
+        // Init
+        send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { processId: process.pid, rootUri: null, capabilities: {} } });
+        await waitForMessage((m) => m.id === 1);
+        send({ jsonrpc: "2.0", method: "initialized", params: {} });
+
+        // Open
+        send({
+            jsonrpc: "2.0", method: "textDocument/didOpen",
+            params: {
+                textDocument: { uri: "file:///test/INCAR_SYMBOLS", languageId: "vasp", version: 1, text: "ENCUT = 500\nISMEAR = 0" }
+            }
+        });
+
+        // Wait for document to be processed (diagnostics published)
+        await waitForMessage((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === "file:///test/INCAR_SYMBOLS");
+
+        // Request Symbols
+        send({
+            jsonrpc: "2.0", id: 2, method: "textDocument/documentSymbol",
+            params: { textDocument: { uri: "file:///test/INCAR_SYMBOLS" } }
+        });
+
+        const msg = await waitForMessage(m => m.id === 2);
+        if (msg.error) {
+            console.error("LSP Error:", JSON.stringify(msg.error, null, 2));
+        }
+        expect(msg.result).toBeDefined();
+        expect(msg.result).toHaveLength(2);
+        expect(msg.result[0].name).toBe("ENCUT");
+        expect(msg.result[1].name).toBe("ISMEAR");
+    });
+
+    test('provides Code Actions for typos', async () => {
+        // Init
+        send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { processId: process.pid, rootUri: null, capabilities: {} } });
+        await waitForMessage((m) => m.id === 1);
+        send({ jsonrpc: "2.0", method: "initialized", params: {} });
+
+        const docUri = "file:///test/INCAR_TYPO";
+        // Open
+        send({
+            jsonrpc: "2.0", method: "textDocument/didOpen",
+            params: {
+                textDocument: { uri: docUri, languageId: "vasp", version: 1, text: "EMCUT = 500" }
+            }
+        });
+
+        // Wait for Diagnostic
+        const diagMsg = await waitForMessage((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === docUri);
+        const diagnostic = diagMsg.params.diagnostics[0];
+        expect(diagnostic.message).toContain("Unknown tag 'EMCUT'");
+
+        // Request CodeAction
+        send({
+            jsonrpc: "2.0", id: 2, method: "textDocument/codeAction",
+            params: {
+                textDocument: { uri: docUri },
+                range: diagnostic.range,
+                context: { diagnostics: [diagnostic] }
+            }
+        });
+
+        const actionMsg = await waitForMessage(m => m.id === 2);
+        const actions = actionMsg.result;
+        expect(actions.length).toBeGreaterThan(0);
+        expect(actions[0].title).toBe("Change to 'ENCUT'");
+        expect(actions[0].kind).toBe("quickfix");
+    });
 });
