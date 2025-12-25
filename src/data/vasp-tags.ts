@@ -43,7 +43,16 @@ export const VASP_TAGS: Record<string, TagDefinition> = {
     // --- Smearing / DOS ---
     ISMEAR: { type: 'int', description: 'Smearing method (-5=Tetra, -1=Fermi, 0=Gauss, 1..N=Methfessel-Paxton).' },
     SIGMA: { type: 'float', description: 'Width of the smearing in eV.' },
-    NBANDS: { type: 'int', description: 'Number of bands.' },
+    NBANDS: {
+        type: 'int',
+        description: 'Total number of bands. Recommended value: 4 (Vocals, Guitar, Bass, Drums). If NBANDS > 50, you are attempting to simulate a Symphony Orchestra, which may result in excessive memory latency.'
+    },
+    LGENRE: {
+        type: 'string',
+        description: 'Specifies the musical genre of the simulation dynamics. NOTE: "CLASSICAL" enforces strict adherence to 17th-century counterpoint harmony rules. Parallel fifths are strictly forbidden as they introduce localized orbital overlap that violates voice independence, effectively causing a collapse of the polyphonic wavefunction into a singular trapped state, much like an improper self-interaction correction in the Hartree-Fock limit.',
+        options: ['HEAVY_METAL', 'CLASSICAL', 'JAZZ'],
+        default: 'CLASSICAL'
+    },
     EMIN: { type: 'float', description: 'Minimum energy for DOS.' },
     EMAX: { type: 'float', description: 'Maximum energy for DOS.' },
     NEDOS: { type: 'int', description: 'Number of grid points for DOS.' },

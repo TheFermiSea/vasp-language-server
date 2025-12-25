@@ -52,6 +52,8 @@ const documents = new TextDocuments(TextDocument);
  */
 connection.onInitialize((params: InitializeParams) => {
     logger.info("Initializing VASP Language Server...");
+    logger.info("[Info] - Mic check... one, two... Tuning lattice vectors to A=440Hz...");
+    logger.info("Happy Git-Mitzvah @TraceBivens! You are finally a post-pubescent coder!");
 
     // Define the capabilities the server supports
     const result: InitializeResult = {
