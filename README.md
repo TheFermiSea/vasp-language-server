@@ -1,39 +1,104 @@
 # VASP Language Server
 
-A Language Server Protocol (LSP) implementation for VASP (Vienna Ab initio Simulation Package) input files (`POSCAR`, `INCAR`, `POTCAR`, `KPOINTS`).
+<div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![VASP LSP](https://img.shields.io/badge/VASP-Language%20Server-0055BB?style=for-the-badge&logo=typescript)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)](package.json)
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
+[![VASP Version](https://img.shields.io/badge/Support-VASP%206.5.x-EDA523?style=for-the-badge)](https://www.vasp.at/wiki)
 
-## Overview
+**Intelligent editing experience for Vienna Ab initio Simulation Package (VASP) input files.**
 
-This project provides intelligent editing features for VASP files in any LSP-compliant editor (VS Code, Neovim, Zed, Emacs, etc.). It supports robust validation for `POSCAR` structural files and advanced `INCAR` editing with type checking and documentation.
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Configuration](#configuration) • [Architecture](#architecture) • [Contributing](#contributing)
 
-## Features
+</div>
 
-- **INCAR Support (VASP 6.5.x)**:
-  - **Validation**: Strict type checking for 50+ common tags (e.g., `ISMEAR` must be Int, `LREAL` must be Boolean).
-  - **Hover Documentation**: Detailed descriptions and default values for tags (e.g., valid flags for `ALGO`).
-  - **Autocomplete**: Suggestions for known tags and boolean values (.TRUE./.FALSE.).
-  - **Syntax Checks**: Detects missing equals signs, invalid quoting, and continuation line issues.
-  - **Parsing**: Handles complex syntax including inline comments (`#`, `!`), semicolons (`;`), and line continuations (`\`).
+---
 
-- **POSCAR Validation**:
-  - Validates precise file structure (Scaling factor, Lattice vectors, Atom counts).
-  - Checks for correct number of tokens per line.
-  - Validates constraints (e.g., lattice vectors must be 3 numbers, atom counts must be integers).
-  - Cross-validation: Ensures the number of species names matches the number of atom counts.
-  - Supports VASP 5.x format (implicit species names) and VASP 4.x.
-  - Validates Selective Dynamics ('T'/'F' flags).
+## 📖 Overview
 
-## Installation
+The **VASP Language Server** brings modern IDE features to the world of computational materials science. Built on the **Language Server Protocol (LSP)**, it provides instant feedback, validation, and documentation for VASP input files (`INCAR`, `POSCAR`), helping researchers avoid costly simulation errors before they happen.
+
+Stop checking `OUTCAR` for syntax errors. Catch them as you type.
+
+### Why use this?
+
+* **Prevent Crashes**: Validates `POSCAR` geometry and `INCAR` types strictness.
+* **Learn VASP**: Hover over tags in `INCAR` to see documentation from the VASP Wiki.
+* **Save Time**: Autocomplete tags and values instead of checking the manual.
+
+---
+
+## ✨ Features
+
+### Feature Matrix
+
+| Feature | INCAR | POSCAR | POTCAR | KPOINTS |
+| :--- | :---: | :---: | :---: | :---: |
+| **Syntax Validation** | ✅ | ✅ | 🔜 | 🔜 |
+| **Type Checking** | ✅ | ✅ | - | - |
+| **Documentation (Hover)** | ✅ | ❌ | - | - |
+| **Autocomplete** | ✅ | ❌ | - | - |
+| **Formatting** | 🔜 | 🔜 | - | - |
+| **Cross-File Checks** | ❌ | ✅ | 🔜 | - |
+
+### 🚀 INCAR (VASP 6.5.x)
+
+- **Robust Parsing**: Handles multi-line statements (`\`), inline comments (`#`, `!`), and semicolons (`;`).
+* **Strict Linting**: Validates over **50+ tags** against their expected types:
+  * `ISMEAR` must be an `Integer`.
+  * `ENCUT` must be a `Float`.
+  * `LREAL` must be a `Boolean` (`.TRUE.`, `T`, `False`).
+  * Warns on **unknown tags** to catch typos (`ISMEAR` vs `ISMear`).
+* **Smart Hover**: Hover over any known tag to view its description, default value, and data type.
+* **Autocomplete**: Type `=` to see a list of valid tags and descriptions.
+
+### 📐 POSCAR
+
+- **Structural Integrity**: Validates the 3x3 lattice matrix.
+* **Consistency Check**: Ensures the number of atom coordinates matches the species counts provided in the header.
+* **Format Support**: Handles VASP 5.x (explicit species) and VASP 4.x (implicit) formats.
+* **Selective Dynamics**: Validates `T`/`F` flags when selective dynamics is enabled.
+
+---
+
+## 🏗 Architecture
+
+The server communicates with your editor via standard input/output (stdio) using JSON-RPC.
+
+```mermaid
+sequenceDiagram
+    participant Editor as 💻 Editor (Client)
+    participant Server as ⚙️ VASP LSP (Server)
+    participant Parser as 📝 Parser
+    participant Linter as 🔍 Linter
+    participant DB as 📚 Tag Database
+
+    Editor->>Server: textDocument/didChange (INCAR)
+    Server->>Parser: Parse Content
+    Parser-->>Server: AST (Tags, Values, Ranges)
+    
+    Server->>Linter: Validate AST
+    Linter->>DB: Lookup Tag Definitions (VASP 6.5)
+    DB-->>Linter: Types & Constraints
+    Linter-->>Server: Diagnostics (Errors/Warnings)
+    
+    Server->>Editor: textDocument/publishDiagnostics
+    Note over Editor: Renders red squiggles 〰️
+```
+
+For a deep dive into the internal design, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## 📦 Installation
 
 ### Prerequisites
 
-- Node.js (>= 14.0)
-- npm
+- **Node.js** (v14 or higher)
+* **npm**
 
-### Building from Source
+### Quick Start (Source)
 
 1. Clone the repository:
 
@@ -42,37 +107,32 @@ This project provides intelligent editing features for VASP files in any LSP-com
     cd vasp-language-server
     ```
 
-2. Install dependencies:
+2. Install dependencies and build:
 
     ```bash
     npm install
-    ```
-
-3. Build the server:
-
-    ```bash
     npm run build
     ```
 
-    This compiles the TypeScript source to `out/server.js`.
-
-4. (Optional) Create the binary wrapper:
+3. (Optional) Create a global binary symlink:
 
     ```bash
-    npm pkg set bin.vasp-lsp="./bin/vasp-lsp"
-    chmod +x bin/vasp-lsp
+    npm link
     ```
 
-## Usage
+---
 
-### Neovim (nvim-lspconfig)
+## 🔌 Usage
 
-Add the following configuration to your `init.lua` or LSP config file:
+### Neovim (using `nvim-lspconfig`)
+
+Add this to your `init.lua`. This configuration assumes you have built the server locally.
 
 ```lua
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
+-- define custom config if not already present
 if not configs.vasp_lsp then
   configs.vasp_lsp = {
     default_config = {
@@ -84,14 +144,34 @@ if not configs.vasp_lsp then
   }
 end
 
-lspconfig.vasp_lsp.setup{}
+lspconfig.vasp_lsp.setup{
+    on_attach = function(client, bufnr)
+        -- Keybindings for hover, etc.
+        local opts = { noremap=true, silent=true, buffer=bufnr }
+        vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
+        vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
+    end
+}
 ```
 
 ### VS Code
 
-To use this server with VS Code, you typically need a client extension wrapper.
-(See `client/` folder if available, or use a generic LSP client extension like "Run on Save").
+Currently, this requires a generic LSP client extension (like "Run on Save" or "External LSP"):
 
-## Contributing
+1. Install an extension that allows running external commands as LSP servers.
+2. Point it to: `node /path/to/vasp-language-server/out/server.js --stdio`
+3. Map file patterns `INCAR`, `POSCAR` to language ID `vasp`.
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to set up the development environment and add new features.
+**Dedicated VS Code extension coming soon.**
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Whether it's adding new tags to the database, improving parser robustness, or adding support for `KPOINTS`.
+
+Please read [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for development guidelines.
+
+## 📄 License
+
+MIT © [TheFermiSea](https://github.com/TheFermiSea)
