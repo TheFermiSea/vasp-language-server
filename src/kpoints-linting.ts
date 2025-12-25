@@ -25,14 +25,15 @@ export function validateKpoints(data: KpointsData): Diagnostic[] {
     if (data.numKpoints === 0) {
         // Grid check
         if (data.grid.length === 3) {
-            if (data.grid.some(v => v <= 0)) {
+            if (data.grid.some((v) => v <= 0)) {
                 diagnostics.push({
                     severity: DiagnosticSeverity.Error,
                     range: { start: { line: 3, character: 0 }, end: { line: 3, character: 10 } }, // Approx range
-                    message: "Grid values must be positive integers."
+                    message: 'Grid values must be positive integers.'
                 });
             }
-        } else if (data.mode.toUpperCase().startsWith('L')) { // Line-mode
+        } else if (data.mode.toUpperCase().startsWith('L')) {
+            // Line-mode
             // Line mode doesn't use a 3-val grid on line 4 usually?
             // Actually line mode with 0 kpoints implies... wait.
             // Line-mode typically specifies intersections.

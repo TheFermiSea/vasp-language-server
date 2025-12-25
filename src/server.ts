@@ -3,17 +3,11 @@ import {
     TextDocuments,
     ProposedFeatures,
     InitializeParams,
-    DidChangeConfigurationNotification,
     TextDocumentSyncKind,
     InitializeResult,
     Diagnostic,
     CompletionItem,
-    CompletionItemKind,
-    Hover,
-    CodeAction,
-    CodeActionKind,
-    TextEdit,
-    Command
+    CompletionItemKind
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { validatePoscar } from './poscar-linting';
@@ -23,17 +17,19 @@ import { parseKpoints } from './kpoints-parsing';
 import { validateKpoints } from './kpoints-linting';
 import { parseIncar } from './incar-parsing';
 import { formatIncar } from './incar-formatting';
-import { VASP_TAGS } from './data/vasp-tags';
 import { logger } from './logger';
-import { IncarTag } from './incar-tag';
-import { levenshteinDistance } from './util';
 import { getIncarCodeActions } from './code-actions';
 import { getIncarSymbols, getPoscarSymbols } from './document-symbols';
+import { getIncarHover } from './features/incar/hover';
+import { getIncarCompletions, resolveIncarCompletion } from './features/incar/completion';
+import { getIncarSemanticTokens } from './features/incar/semantic-tokens';
+import { semanticTokensLegend } from './features/semantic-tokens-legend';
+import { getFoldingRanges } from './features/folding';
 
 /**
  * Create a connection for the server. The connection uses Node's IPC as a transport.
  * Also include all preview / proposed LSP features.
- * 
+ *
  * @remarks
  * Use `ProposedFeatures.all` to ensure access to the latest LSP capabilities,
  * although we primarily use standard `textDocumentSync` and diagnostics for now.
@@ -47,7 +43,7 @@ logger.initialize(connection);
 /**
  * Create a simple text document manager.
  * The text document manager supports full document sync only.
- * 
+ *
  * @remarks
  * `TextDocuments` automatically handles `textDocument/didOpen`, `textDocument/onDidChange`,
  * and `textDocument/didClose` notifications, maintaining the state of documents
@@ -58,14 +54,14 @@ const documents = new TextDocuments(TextDocument);
 /**
  * Handler for the `initialize` request.
  * This is the first request sent by the client (VS Code, Neovim, etc.) to the server.
- * 
+ *
  * @param params - Initialization parameters containing client capabilities.
  * @returns An `InitializeResult` containing the server's capabilities.
  */
-connection.onInitialize((params: InitializeParams) => {
-    logger.info("Initializing VASP Language Server...");
-    logger.info("[Info] - Mic check... one, two... Tuning lattice vectors to A=440Hz...");
-    logger.info("Happy Git-Mitzvah @TraceBivens! You are finally a post-pubescent coder!");
+connection.onInitialize((_params: InitializeParams) => {
+    logger.info('Initializing VASP Language Server...');
+    logger.info('[Info] - Mic check... one, two... Tuning lattice vectors to A=440Hz...');
+    logger.info('Happy Git-Mitzvah @TraceBivens! You are finally a post-pubescent coder!');
 
     // Define the capabilities the server supports
     const result: InitializeResult = {
@@ -89,7 +85,16 @@ connection.onInitialize((params: InitializeParams) => {
             codeActionProvider: true,
 
             // Document Symbol support (Outline)
-            documentSymbolProvider: true
+            documentSymbolProvider: true,
+
+            // Semantic Tokens (Syntax Highlighting)
+            semanticTokensProvider: {
+                legend: semanticTokensLegend,
+                full: true
+            },
+
+            // Folding Ranges
+            foldingRangeProvider: true
         }
     };
     return result;
@@ -100,7 +105,7 @@ connection.onInitialize((params: InitializeParams) => {
  * This is sent after the client has received the result of the `initialize` request.
  */
 connection.onInitialized(() => {
-    logger.info("VASP Language Server Initialized.");
+    logger.info('VASP Language Server Initialized.');
 });
 
 /**
@@ -108,13 +113,13 @@ connection.onInitialized(() => {
  * Triggered whenever a text document is changed (or opened).
  * This is the entry point for the linting workflow.
  */
-documents.onDidChangeContent(change => {
+documents.onDidChangeContent((change) => {
     validateTextDocument(change.document);
 });
 
 /**
  * Validates a text document by parsing it and checking for errors.
- * 
+ *
  * @param textDocument - The document to validate.
  * @returns A promise that resolves when validation is complete.
  */
@@ -122,7 +127,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     const uri = textDocument.uri;
     const diagnostics: Diagnostic[] = [];
 
-    const fileName = uri.split('/').pop() || "";
+    const fileName = uri.split('/').pop() || '';
 
     // Simple heuristic to check file type
     if (fileName.match(/POSCAR/i) || fileName.match(/CONTCAR/i)) {
@@ -133,8 +138,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         } catch (e) {
             logger.error(`Error validating POSCAR: ${e}`);
         }
-    }
-    else if (fileName.match(/INCAR/i)) {
+    } else if (fileName.match(/INCAR/i)) {
         try {
             logger.info(`Validating INCAR: ${uri}`);
             // Parse and Lint INCAR
@@ -144,8 +148,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         } catch (e) {
             logger.error(`Error validating INCAR: ${e}`);
         }
-    }
-    else if (fileName.match(/POTCAR/i)) {
+    } else if (fileName.match(/POTCAR/i)) {
         try {
             logger.info(`Validating POTCAR: ${uri}`);
             const potcarDiagnostics = validatePotcar(textDocument);
@@ -153,8 +156,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         } catch (e) {
             logger.error(`Error validating POTCAR: ${e}`);
         }
-    }
-    else if (fileName.match(/KPOINTS/i)) {
+    } else if (fileName.match(/KPOINTS/i)) {
         try {
             logger.info(`Validating KPOINTS: ${uri}`);
             const parsed = parseKpoints(textDocument);
@@ -193,27 +195,12 @@ connection.onCompletion((_textDocumentPosition: any): CompletionItem[] => {
     }
 
     // INCAR Completions (Default)
-    // Generate completion items from VASP_TAGS
-    for (const [tag, def] of Object.entries(VASP_TAGS)) {
-        items.push({
-            label: tag,
-            kind: CompletionItemKind.Property,
-            data: tag,
-            detail: def.description
-        });
-    }
-    return items;
+    return getIncarCompletions();
 });
 
-connection.onCompletionResolve(
-    (item: CompletionItem): CompletionItem => {
-        const tagDef = VASP_TAGS[item.data as string];
-        if (tagDef) {
-            item.documentation = tagDef.description + (tagDef.default ? `\n\nDefault: ${tagDef.default}` : "");
-        }
-        return item;
-    }
-);
+connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
+    return resolveIncarCompletion(item);
+});
 
 // Support for Hover
 connection.onHover(({ textDocument, position }) => {
@@ -223,36 +210,7 @@ connection.onHover(({ textDocument, position }) => {
     // Check if INCAR
     if (!textDocument.uri.match(/INCAR/i)) return null;
 
-    const parsed = parseIncar(document);
-    // Find the token at the cursor position
-    const line = position.line;
-    const char = position.character;
-
-    // Use `allTokens` from parser
-    const token = parsed.allTokens.find(t => {
-        return (t.range.start.line === line &&
-            t.range.start.character <= char &&
-            t.range.end.character >= char); // token range covers cursor
-    });
-
-    if (token) {
-        // If it's a Tag, show documentation
-        if (token.type === "value" || token.type === "tag") {
-            const tagName = token.text.toUpperCase();
-            const def = VASP_TAGS[tagName];
-
-            if (def) {
-                const markup = `**${tagName}**\n\n${def.description}\n\n*Type*: \`${def.type}\`\n*Default*: ${def.default || 'N/A'}`;
-                return {
-                    contents: {
-                        kind: 'markdown',
-                        value: markup
-                    }
-                };
-            }
-        }
-    }
-    return null;
+    return getIncarHover(document, position);
 });
 
 // Support for Formatting
@@ -272,6 +230,17 @@ connection.onCodeAction((params) => {
     return getIncarCodeActions(params.textDocument.uri, params.context.diagnostics);
 });
 
+// Support for Semantic Tokens
+connection.languages.semanticTokens.on((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) return { data: [] };
+
+    if (document.uri.match(/INCAR/i)) {
+        return getIncarSemanticTokens(document);
+    }
+    return { data: [] };
+});
+
 // Support for Document Symbols (Outline)
 connection.onDocumentSymbol((params) => {
     const document = documents.get(params.textDocument.uri);
@@ -279,8 +248,7 @@ connection.onDocumentSymbol((params) => {
 
     if (document.uri.match(/INCAR/i)) {
         return getIncarSymbols(document);
-    }
-    else if (document.uri.match(/POSCAR/i) || document.uri.match(/CONTCAR/i)) {
+    } else if (document.uri.match(/POSCAR/i) || document.uri.match(/CONTCAR/i)) {
         return getPoscarSymbols(document);
     }
 
@@ -289,6 +257,13 @@ connection.onDocumentSymbol((params) => {
 
 // Make the text document manager listen on the connection
 documents.listen(connection);
+
+// Support for Folding Ranges
+connection.onFoldingRanges((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) return [];
+    return getFoldingRanges(document);
+});
 
 // Listen on the connection
 connection.listen();

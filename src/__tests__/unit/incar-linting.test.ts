@@ -38,6 +38,6 @@ describe('INCAR Linter', () => {
 
     test('Easter Egg: POTIM Tempo Warning', () => {
         const diags = validate('POTIM = 4.0');
-        expect(diags.some(d => d.message.includes('Presto'))).toBeTruthy();
+        expect(diags.some((d) => d.message.includes('Presto'))).toBeTruthy();
     });
 });

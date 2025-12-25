@@ -15,7 +15,7 @@ export function validatePotcar(document: TextDocument): Diagnostic[] {
         diagnostics.push({
             severity: DiagnosticSeverity.Warning,
             range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
-            message: "No elements detected in POTCAR. Is this a valid VASP POTCAR?"
+            message: 'No elements detected in POTCAR. Is this a valid VASP POTCAR?'
         });
         return diagnostics;
     }
@@ -47,7 +47,10 @@ export function validatePotcar(document: TextDocument): Diagnostic[] {
                         // POTCAR has more elements than POSCAR
                         diagnostics.push({
                             severity: DiagnosticSeverity.Warning,
-                            range: { start: { line: pot.line, character: 0 }, end: { line: pot.line, character: pot.description.length } },
+                            range: {
+                                start: { line: pot.line, character: 0 },
+                                end: { line: pot.line, character: pot.description.length }
+                            },
                             message: `Extra potential for '${pot.symbol}' found in POTCAR but not in POSCAR.`
                         });
                     } else if (!pot) {
@@ -57,7 +60,10 @@ export function validatePotcar(document: TextDocument): Diagnostic[] {
                         const last = parsedPot.elements[parsedPot.elements.length - 1];
                         diagnostics.push({
                             severity: DiagnosticSeverity.Error,
-                            range: { start: { line: last.line, character: 0 }, end: { line: last.line, character: last.description.length } },
+                            range: {
+                                start: { line: last.line, character: 0 },
+                                end: { line: last.line, character: last.description.length }
+                            },
                             message: `Missing potential for POSCAR element '${pos}'. POTCAR ends prematurely.`
                         });
                     } else {
@@ -69,15 +75,17 @@ export function validatePotcar(document: TextDocument): Diagnostic[] {
                         if (!pot.symbol.startsWith(pos) && !pos.startsWith(pot.symbol)) {
                             diagnostics.push({
                                 severity: DiagnosticSeverity.Error,
-                                range: { start: { line: pot.line, character: 0 }, end: { line: pot.line, character: pot.description.length } },
+                                range: {
+                                    start: { line: pot.line, character: 0 },
+                                    end: { line: pot.line, character: pot.description.length }
+                                },
                                 message: `Mismatch: POSCAR expects '${pos}', but found '${pot.symbol}' in POTCAR.`
                             });
                         }
                     }
                 }
             }
-
-        } catch (e) {
+        } catch {
             // Ignore FS errors
         }
     }

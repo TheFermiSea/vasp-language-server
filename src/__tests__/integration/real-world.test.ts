@@ -20,7 +20,7 @@ describe('Real World VASP Files', () => {
         if (!server.killed) {
             server.stdin.end();
             server.kill();
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise((r) => setTimeout(r, 100));
         }
     });
 
@@ -52,7 +52,9 @@ describe('Real World VASP Files', () => {
                             resolve(json);
                             return;
                         }
-                    } catch (e) { }
+                    } catch {
+                        // ignore JSON parse errors while buffering
+                    }
                     offset = headerIndex + headerLen + length;
                     if (offset >= buffer.length) break;
                 }
@@ -70,16 +72,21 @@ describe('Real World VASP Files', () => {
         const uri = `file://${filePath}`;
 
         // Initialize
-        send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { processId: process.pid, rootUri: null, capabilities: {} } });
+        send({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: { processId: process.pid, rootUri: null, capabilities: {} }
+        });
         await waitForMessage((m) => m.id === 1);
-        send({ jsonrpc: "2.0", method: "initialized", params: {} });
+        send({ jsonrpc: '2.0', method: 'initialized', params: {} });
 
         // Open
         send({
-            jsonrpc: "2.0",
-            method: "textDocument/didOpen",
+            jsonrpc: '2.0',
+            method: 'textDocument/didOpen',
             params: {
-                textDocument: { uri, languageId: "vasp", version: 1, text: content }
+                textDocument: { uri, languageId: 'vasp', version: 1, text: content }
             }
         });
 
@@ -99,12 +106,14 @@ describe('Real World VASP Files', () => {
     });
 
     test('Malformed: Broken Relaxation (INCAR_RELAX_BROKEN)', async () => {
-        const diagnostics = await validateFile(path.join(__dirname, '../../../test/fixtures/malformed/INCAR_RELAX_BROKEN'));
+        const diagnostics = await validateFile(
+            path.join(__dirname, '../../../test/fixtures/malformed/INCAR_RELAX_BROKEN')
+        );
         expect(diagnostics.length).toBeGreaterThan(0);
 
         const messages = diagnostics.map((d: any) => d.message).join(' ');
-        expect(messages).toContain("expects a single value"); // ENCUT = 400 eV (parsed as two tokens)
-        expect(messages).toContain("Expected integer"); // ISMEAR = Gaussian
-        expect(messages).toContain("Expected integer"); // NCORE = Four
+        expect(messages).toContain('expects a single value'); // ENCUT = 400 eV (parsed as two tokens)
+        expect(messages).toContain('Expected integer'); // ISMEAR = Gaussian
+        expect(messages).toContain('Expected integer'); // NCORE = Four
     });
 });

@@ -1,7 +1,7 @@
 /**
  * Counts the elements in an array until a condition is met.
  * Useful for finding the 'valid' part of a line before invalid data starts.
- * 
+ *
  * @param arr - The array to iterate over.
  * @param condition - The predicate. The count stops *before* the first element that satisfies this.
  * @returns The number of elements before the condition became true.
@@ -17,7 +17,7 @@ export function countUntil<T>(arr: Array<T>, condition: (val: T) => boolean): nu
 /**
  * Checks if a string represents a valid real number (float or integer).
  * Matches scientific notation (e.g. 1.0E-5).
- * 
+ *
  * @param str - The string to check.
  * @returns True if valid number.
  */
@@ -27,7 +27,7 @@ export function isNumber(str: string): boolean {
 
 /**
  * Checks if a string represents a valid integer.
- * 
+ *
  * @param str - The string to check.
  * @returns True if valid integer.
  */
@@ -38,7 +38,7 @@ export function isInteger(str: string): boolean {
 /**
  * Checks if a string consists only of alphabetic characters.
  * Used for validating species names (e.g., 'Fe', 'Li').
- * 
+ *
  * @param str - The string to check.
  * @returns True if only letters.
  */
@@ -72,7 +72,7 @@ export function levenshteinDistance(a: string, b: string): number {
                     matrix[i - 1][j - 1] + 1, // substitution
                     Math.min(
                         matrix[i][j - 1] + 1, // insertion
-                        matrix[i - 1][j] + 1  // deletion
+                        matrix[i - 1][j] + 1 // deletion
                     )
                 );
             }

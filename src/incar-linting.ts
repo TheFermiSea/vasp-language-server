@@ -1,7 +1,7 @@
-import { Diagnostic, DiagnosticSeverity, Range } from "vscode-languageserver-types";
-import { IncarDocument, IncarStatement } from "./incar-parsing";
-import { VASP_TAGS, TagDefinition } from "./data/vasp-tags";
-import { isNumber, isInteger } from "./util";
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
+import { IncarDocument, IncarStatement } from './incar-parsing';
+import { VASP_TAGS, TagDefinition } from './data/vasp-tags';
+import { isNumber, isInteger } from './util';
 
 /**
  * Validates a parsed INCAR document.
@@ -22,7 +22,7 @@ export function validateIncar(doc: IncarDocument): Diagnostic[] {
                 message: `Unknown tag '${tagName}'. Check spelling or version compatibility.`,
                 range: stmt.tag.range,
                 severity: DiagnosticSeverity.Warning,
-                source: "VASP"
+                source: 'VASP'
             });
             continue;
         }
@@ -40,7 +40,7 @@ export function validateIncar(doc: IncarDocument): Diagnostic[] {
                     message: `Warning: Time step is extremely fast (Presto). Please consider slowing down to Andante (0.5 - 2.0 fs) to ensure the ions can keep the beat.`,
                     range: stmt.values[0].range,
                     severity: DiagnosticSeverity.Warning,
-                    source: "Maestro"
+                    source: 'Maestro'
                 });
             }
         }
@@ -53,7 +53,7 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
     // If the expected type is 'string', we treat all tokens as one string value.
     if (def.type === 'string') {
         // Combine tokens for "SYSTEM = Fe oxide"
-        const fullValue = stmt.values.map(v => v.text).join(" ");
+        const fullValue = stmt.values.map((v) => v.text).join(' ');
 
         if (def.options) {
             // Options are usually single keywords.
@@ -64,16 +64,16 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
                     message: `Tag '${stmt.tag.text}' expects a single keyword option, but multiple were found.`,
                     range: Range.create(stmt.values[1].range.start, stmt.values[stmt.values.length - 1].range.end),
                     severity: DiagnosticSeverity.Warning,
-                    source: "VASP"
+                    source: 'VASP'
                 });
             } else {
-                const found = def.options.find(opt => opt.toLowerCase() === fullValue.toLowerCase());
+                const found = def.options.find((opt) => opt.toLowerCase() === fullValue.toLowerCase());
                 if (!found) {
                     diagnostics.push({
                         message: `Invalid option '${fullValue}'. Allowed: ${def.options.join(', ')}`,
                         range: stmt.values[0].range,
                         severity: DiagnosticSeverity.Error,
-                        source: "VASP"
+                        source: 'VASP'
                     });
                 }
             }
@@ -87,7 +87,7 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
             message: `Tag '${stmt.tag.text}' expects a single value, but multiple were found.`,
             range: Range.create(stmt.values[1].range.start, stmt.values[stmt.values.length - 1].range.end),
             severity: DiagnosticSeverity.Warning,
-            source: "VASP"
+            source: 'VASP'
         });
     }
 
@@ -102,7 +102,7 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
                     message: `Expected integer for '${stmt.tag.text}', found '${valText}'.`,
                     range: valToken.range,
                     severity: DiagnosticSeverity.Error,
-                    source: "VASP"
+                    source: 'VASP'
                 });
             }
             break;
@@ -112,27 +112,31 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
                     message: `Expected number for '${stmt.tag.text}', found '${valText}'.`,
                     range: valToken.range,
                     severity: DiagnosticSeverity.Error,
-                    source: "VASP"
+                    source: 'VASP'
                 });
             }
             break;
-        case 'bool':
+        case 'bool': {
             // VASP booleans: .TRUE., .FALSE., T, F, True, False
             const lower = valText.toLowerCase();
             const isBool =
-                lower === '.true.' || lower === '.false.' ||
-                lower === 't' || lower === 'f' ||
-                lower === 'true' || lower === 'false';
+                lower === '.true.' ||
+                lower === '.false.' ||
+                lower === 't' ||
+                lower === 'f' ||
+                lower === 'true' ||
+                lower === 'false';
 
             if (!isBool) {
                 diagnostics.push({
                     message: `Expected boolean (T/F/.TRUE./.FALSE.) for '${stmt.tag.text}', found '${valText}'.`,
                     range: valToken.range,
                     severity: DiagnosticSeverity.Error,
-                    source: "VASP"
+                    source: 'VASP'
                 });
             }
             break;
+        }
         case 'array':
             // Arrays: Check all items are valid numbers?
             // Usually arrays in VASP are numbers.
@@ -142,7 +146,7 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
                         message: `Expected number in array for '${stmt.tag.text}', found '${v.text}'.`,
                         range: v.range,
                         severity: DiagnosticSeverity.Error,
-                        source: "VASP"
+                        source: 'VASP'
                     });
                 }
             }

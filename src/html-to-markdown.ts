@@ -1,7 +1,6 @@
 import TurndownService from 'turndown';
-// @ts-ignore -- Missing types for GFM plugin, handled via shims or ignore
 import { gfm } from '@joplin/turndown-plugin-gfm';
-import { MathConverter } from "./math-converter";
+import { MathConverter } from './math-converter';
 
 /**
  * Converts HTML content (scraped from VASP Wiki) into Markdown.
@@ -18,16 +17,14 @@ export class HtmlToMarkdownConverter {
 
     /**
      * Main conversion method.
-     * 
+     *
      * @param html - Raw HTML string.
-     * @param relativeURL - (Optional) Base URL to resolve relative links. 
-     *                      Currently unused in the ported version but kept for compatibility.
      * @returns Markdown string.
      */
-    convert(html: string, relativeURL?: string): string {
+    convert(html: string): string {
         // Pre-process: Convert basic math formatting
         // Replace <i> tags often used for variables with simple text or markdown italics
-        let cleanHtml = html.replace(/<i\s*>(.*?)<\/i\s*>/g, "$1");
+        const cleanHtml = html.replace(/<i\s*>(.*?)<\/i\s*>/g, '$1');
 
         // Remove 'v' specific styling classes if present?
         // (Original code stripped specific classes, here we rely on Turndown ignoring them)
@@ -57,11 +54,8 @@ export class HtmlToMarkdownConverter {
         // Custom Rule: Handle 'emphasized' text that comes from specific wiki classes
         // Converts <span class="texhtml">...</span> to italics
         service.addRule('texhtml', {
-            filter: function (node, options) {
-                return (
-                    node.nodeName === 'SPAN' &&
-                    (node as any).classList.contains('texhtml')
-                );
+            filter: function (node) {
+                return node.nodeName === 'SPAN' && (node as any).classList.contains('texhtml');
             },
             replacement: function (content) {
                 return '*' + content + '*';

@@ -1,9 +1,9 @@
-import { DocumentSymbol, SymbolKind } from "vscode-languageserver-types";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { getIncarSymbols, getPoscarSymbols } from "../../document-symbols";
+import { SymbolKind } from 'vscode-languageserver-types';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { getIncarSymbols, getPoscarSymbols } from '../../document-symbols';
 
-function createDoc(content: string, uri = "file:///INCAR"): TextDocument {
-    return TextDocument.create(uri, "plaintext", 1, content);
+function createDoc(content: string, uri = 'file:///INCAR'): TextDocument {
+    return TextDocument.create(uri, 'plaintext', 1, content);
 }
 
 describe('Document Symbols (Outline)', () => {
@@ -47,19 +47,19 @@ Direct
 0.1 0.1 0.1
 0.5 0.5 0.5
 `;
-            const doc = createDoc(content, "file:///POSCAR");
+            const doc = createDoc(content, 'file:///POSCAR');
             const symbols = getPoscarSymbols(doc);
 
             expect(symbols.length).toBeGreaterThan(4);
-            expect(symbols[0].name).toBe("Title/Comment");
-            expect(symbols[1].name).toBe("Scaling Factor");
-            expect(symbols[2].name).toBe("Lattice Vectors");
+            expect(symbols[0].name).toBe('Title/Comment');
+            expect(symbols[1].name).toBe('Scaling Factor');
+            expect(symbols[2].name).toBe('Lattice Vectors');
 
-            const species = symbols.find(s => s.name === "Species Names");
+            const species = symbols.find((s) => s.name === 'Species Names');
             expect(species).toBeDefined();
-            expect(species?.detail).toBe("Fe O");
+            expect(species?.detail).toBe('Fe O');
 
-            const coords = symbols.find(s => s.name === "Atomic Coordinates");
+            const coords = symbols.find((s) => s.name === 'Atomic Coordinates');
             expect(coords).toBeDefined();
         });
     });

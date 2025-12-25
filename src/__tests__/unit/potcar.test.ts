@@ -2,7 +2,6 @@ import { parsePotcar } from '../../potcar-parsing';
 import { validatePotcar } from '../../potcar-linting';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
-import * as path from 'path';
 
 // Mock fs for cross-file checks
 jest.mock('fs');
@@ -67,7 +66,9 @@ describe('POTCAR Linter', () => {
     test('Validates matching order', () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
         // Mock POSCAR content: "Fe O\n 1.0\n..." (VASP 5 format)
-        (fs.readFileSync as jest.Mock).mockReturnValue(`System\n1.0\nVec1\nVec2\nVec3\nFe O\n1 1\nDirect\n0 0 0\n0.5 0.5 0.5`);
+        (fs.readFileSync as jest.Mock).mockReturnValue(
+            `System\n1.0\nVec1\nVec2\nVec3\nFe O\n1 1\nDirect\n0 0 0\n0.5 0.5 0.5`
+        );
 
         const content = `
 VRHFIN = Fe:

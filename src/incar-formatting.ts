@@ -8,7 +8,7 @@ export function formatIncar(document: TextDocument): TextEdit[] {
 
     // 1. Analyze lines to find max key length
     let maxKeyLength = 0;
-    const splitLines: { key: string, value: string, originalIndex: number, isAssignment: boolean }[] = [];
+    const splitLines: { key: string; value: string; originalIndex: number; isAssignment: boolean }[] = [];
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -36,7 +36,7 @@ export function formatIncar(document: TextDocument): TextEdit[] {
     }
 
     // 2. Generate Edits
-    // We replace the entire document content to be safe and simple, 
+    // We replace the entire document content to be safe and simple,
     // or we can generate per-line edits. Per-line is better for minimal diffs.
     // However, aligning affects many lines.
     // Let's replace line by line if different.
@@ -49,7 +49,10 @@ export function formatIncar(document: TextDocument): TextEdit[] {
             const newText = `${paddedKey} = ${item.value}`;
 
             if (newText !== lines[item.originalIndex]) {
-                const range = Range.create(Position.create(item.originalIndex, 0), Position.create(item.originalIndex, lines[item.originalIndex].length));
+                const range = Range.create(
+                    Position.create(item.originalIndex, 0),
+                    Position.create(item.originalIndex, lines[item.originalIndex].length)
+                );
                 edits.push(TextEdit.replace(range, newText));
             }
         }

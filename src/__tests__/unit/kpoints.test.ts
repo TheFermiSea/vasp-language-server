@@ -1,7 +1,6 @@
 import { parseKpoints } from '../../kpoints-parsing';
 import { validateKpoints } from '../../kpoints-linting';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { DiagnosticSeverity } from 'vscode-languageserver-types';
 
 describe('KPOINTS Parser', () => {
     function createDoc(content: string) {
@@ -53,7 +52,7 @@ ZebraMode
         const parsed = parseKpoints(createDoc(content));
         const diags = validateKpoints(parsed);
         expect(diags).toHaveLength(1);
-        expect(diags[0].message).toContain("Unknown KPOINTS mode");
+        expect(diags[0].message).toContain('Unknown KPOINTS mode');
     });
 
     test('Validates Integer Grid', () => {
@@ -66,6 +65,6 @@ Gamma
         // Parser might flag this as NaN or linter checks it
         // The parser expects integers for the grid logic I wrote
         expect(diags.length).toBeGreaterThan(0);
-        expect(diags[0].message).toContain("must be integers");
+        expect(diags[0].message).toContain('must be integers');
     });
 });

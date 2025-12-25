@@ -22,7 +22,7 @@ export class IncarTag {
 
     /**
      * Factory method to create an IncarTag from a markdown string.
-     * 
+     *
      * @param markdown - The markdown content describing the tag.
      * @param tagName - The name of the tag.
      * @returns A new IncarTag instance.
@@ -33,11 +33,11 @@ export class IncarTag {
 
     /**
      * Generates a Hover object (MarkupContent) for the LSP.
-     * 
+     *
      * @param baseUrl - (Optional) Base URL to prepend to relative links in the documentation.
      * @returns A MarkupContent object with kind 'markdown'.
      */
-    getHoverText(baseUrl: string): MarkupContent {
+    getHoverText(_baseUrl: string): MarkupContent {
         // We could prepend the baseUrl to links here if logic dictates
         // For now, return the stored description
         return {

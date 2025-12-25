@@ -1,18 +1,10 @@
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { Range, Diagnostic, DiagnosticSeverity } from "vscode-languageserver-types";
-import { isNumber } from "./util";
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Range, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
 
 /**
  * Types of Tokens in INCAR.
  */
-export type IncarTokenType =
-    | "tag"
-    | "equals"
-    | "value"
-    | "comment"
-    | "semicolon"
-    | "eol"
-    | "invalid";
+export type IncarTokenType = 'tag' | 'equals' | 'value' | 'comment' | 'semicolon' | 'eol' | 'invalid';
 
 export interface IncarToken {
     type: IncarTokenType;
@@ -54,12 +46,12 @@ export function parseIncar(document: TextDocument): IncarDocument {
 /**
  * Tokenizer for INCAR.
  */
-function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
+function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
     const tokens: IncarToken[] = [];
     const lines = text.split(/\r?\n/);
 
     for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
+        const line = lines[i];
         let offset = 0;
         let isContinuation = false;
 
@@ -81,7 +73,7 @@ function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
             // 1. Comment
             if (char === '#' || char === '!') {
                 tokens.push({
-                    type: "comment",
+                    type: 'comment',
                     text: remaining,
                     range: Range.create(i, offset, i, line.length)
                 });
@@ -91,8 +83,8 @@ function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
             // 2. Semicolon
             if (char === ';') {
                 tokens.push({
-                    type: "semicolon",
-                    text: ";",
+                    type: 'semicolon',
+                    text: ';',
                     range: Range.create(i, offset, i, offset + 1)
                 });
                 offset++;
@@ -102,8 +94,8 @@ function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
             // 3. Equals
             if (char === '=') {
                 tokens.push({
-                    type: "equals",
-                    text: "=",
+                    type: 'equals',
+                    text: '=',
                     range: Range.create(i, offset, i, offset + 1)
                 });
                 offset++;
@@ -126,7 +118,7 @@ function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
                 const match = remaining.match(quoteRegex);
                 if (match) {
                     tokens.push({
-                        type: "value",
+                        type: 'value',
                         text: match[0],
                         range: Range.create(i, offset, i, offset + match[0].length)
                     });
@@ -135,7 +127,7 @@ function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
                 } else {
                     // Unclosed string
                     tokens.push({
-                        type: "invalid",
+                        type: 'invalid',
                         text: remaining,
                         range: Range.create(i, offset, i, line.length)
                     });
@@ -148,7 +140,7 @@ function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
             if (wordMatch) {
                 const word = wordMatch[0];
                 tokens.push({
-                    type: "value",
+                    type: 'value',
                     text: word,
                     range: Range.create(i, offset, i, offset + word.length)
                 });
@@ -160,8 +152,8 @@ function tokenizeIncar(text: string, document: TextDocument): IncarToken[] {
 
         if (!isContinuation) {
             tokens.push({
-                type: "eol",
-                text: "\n",
+                type: 'eol',
+                text: '\n',
                 range: Range.create(i, line.length, i, line.length)
             });
         }
@@ -197,8 +189,8 @@ function groupTokensIntoStatements(tokens: IncarToken[]): IncarStatement[] {
             }
 
             statements.push({
-                tag: { ...currentTag, type: "tag" },
-                equals: hasEquals ? { type: "equals", text: "=", range: Range.create(0, 0, 0, 0) } : undefined, // Placeholder range need fix? No, just existence check mostly.
+                tag: { ...currentTag, type: 'tag' },
+                equals: hasEquals ? { type: 'equals', text: '=', range: Range.create(0, 0, 0, 0) } : undefined, // Placeholder range need fix? No, just existence check mostly.
                 values: currentValues,
                 parsingErrors: diags
             });
@@ -212,19 +204,19 @@ function groupTokensIntoStatements(tokens: IncarToken[]): IncarStatement[] {
     while (i < tokens.length) {
         const t = tokens[i];
 
-        if (t.type === "comment") {
-            // Comments are ignored 
+        if (t.type === 'comment') {
+            // Comments are ignored
             i++;
             continue;
         }
 
-        if (t.type === "semicolon" || t.type === "eol") {
+        if (t.type === 'semicolon' || t.type === 'eol') {
             flush();
             i++;
             continue;
         }
 
-        if (t.type === "equals") {
+        if (t.type === 'equals') {
             if (currentTag) {
                 hasEquals = true;
             }
@@ -232,7 +224,7 @@ function groupTokensIntoStatements(tokens: IncarToken[]): IncarStatement[] {
             continue;
         }
 
-        if (t.type === "value" || t.type === "invalid") {
+        if (t.type === 'value' || t.type === 'invalid') {
             if (!currentTag) {
                 currentTag = t;
             } else {

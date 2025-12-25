@@ -42,9 +42,9 @@ export function parsePotcar(document: TextDocument): ParsedPotcar {
         // Regex: space PAW_... Element Date
         const titelMatch = line.match(/^\s*PAW_(?:PBE|LDA|GGA)\s+([A-Za-z0-9_]+)\s+/);
         if (titelMatch) {
-            // We prioritize VRHFIN if we found one recently? 
+            // We prioritize VRHFIN if we found one recently?
             // Actually, a POTCAR block has both. We should avoid duplicates.
-            // But VRHFIN is inside the block. TITEL is at start. 
+            // But VRHFIN is inside the block. TITEL is at start.
             // Let's stick to VRHFIN as it's definitive for the element properties.
             // OR, if VASP 5.x POTKUL, TITEL is good.
         }
@@ -56,7 +56,7 @@ export function parsePotcar(document: TextDocument): ParsedPotcar {
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             // Example: "   PAW_PBE Fe 06Sep2000"
-            // Careful not to match random text. 
+            // Careful not to match random text.
             // TITEL in POTCAR usually starts with spaces.
             const titleMatch = line.match(/^\s*PAW_(?:PBE|LDA|GGA)\s+([A-Za-z0-9]+)(?:\s+|$)/);
             if (titleMatch) {

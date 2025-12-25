@@ -1,82 +1,65 @@
 # Architecture Guide
 
-This document explains the internal design of the VASP Language Server. It is intended for developers who want to understand how the system works or contribute to the codebase.
+This document explains the internal design of the VASP Language Server.
 
 ## High-Level Design
 
 The project follows a standard **Language Server Protocol (LSP)** client-server architecture.
 
-- **Client**: The editor (e.g., Neovim, VS Code). Handles UI (text buffers, rendering squiggles).
-- **Server**: This Node.js process. Handles logic (parsing, validating, documentation).
-- **Transport**: Communication happens via `stdio` (Standard Input/Output) using JSON-RPC.
+- **Client**: The editor (e.g., Neovim, VS Code). Handles UI and text rendering.
+- **Server**: This Node.js process. Handles parsing, validation, and metadata.
+- **Transport**: Standard JSON-RPC over `stdio`.
 
 ## Directory Structure
 
-```
+We recently moved to a feature-based modular structure to keep the codebase maintainable:
+
+```bash
 src/
-├── server.ts           # Entry point. Handles LSP connection and events.
-├── logger.ts           # Logging wrapper (sends logs to client console).
-├── poscar-parsing.ts   # Core Logic: Tokenizes and structures POSCAR files.
-├── poscar-linting.ts   # Core Logic: Validates the parsed structural POSCAR data.
-├── incar-parsing.ts    # Core Logic: Tokenizes and parses INCAR files (Tags/Values).
-├── incar-linting.ts    # Core Logic: Validates INCAR tags against schema.
-├── incar-tag.ts        # Data Model: Represents an INCAR tag.
-├── potcar-parsing.ts   # Core Logic: Extracts species from POTCAR headers.
-├── potcar-linting.ts   # Core Logic: Validates POTCAR against POSCAR.
-├── kpoints-parsing.ts  # Core Logic: Parses K-Point generation modes/grids.
-├── kpoints-linting.ts  # Core Logic: Validates KPOINTS integrity.
-├── structure.ts        # Data Model: Shared interfaces for VASP structures.
-├── util.ts             # Generic helpers (string checking, etc.).
-└── data/
-    └── vasp-tags.ts    # Static database of VASP 6.5.x tag definitions.
+├── server.ts           # Entry point. Directs events to feature managers.
+├── features/           # LSP Feature Implementations
+│   ├── folding.ts      # Folding Range logic
+│   ├── incar/          # INCAR-specific features
+│   │   ├── completion.ts
+│   │   ├── hover.ts
+│   │   ├── quick-fix.ts
+│   │   └── semantic-tokens.ts
+│   └── ... 
+├── document-symbols.ts # Outline logic for INCAR/POSCAR.
+├── incar-parsing.ts    # INCAR-specific tokenization.
+├── poscar-parsing.ts   # POSCAR-specific state machine parser.
+├── data/
+│   └── vasp-tags.ts    # Static VASP tag database.
+└── util.ts             # Shared utilities (Levenstein distance, isNumber, etc.)
 ```
 
 ## Core Components
 
-### 1. The Server (`server.ts`)
+### 1. The Server (`src/server.ts`)
 
-- **Role**: The coordinator.
-- **Initialization**: Sets up the `createConnection` (from `vscode-languageserver`) and the `TextDocuments` manager. Registers capabilities (Hover, Completion).
-- **Event Loop**: Listens for `onDidChangeContent`. When a file changes, it checks the filename (`POSCAR` vs `INCAR`) and delegates to the appropriate validator.
-- **Diagnostics**: Collects errors from the Linter and uses `connection.sendDiagnostics` to push them to the client.
+The server acts as a thin coordinator. It manages the `vscode-languageserver` connection and document synchronization. When an LSP request arrives (e.g., `textDocument/hover`), it identifies the file type and calls the corresponding feature module.
 
-### 2. The Parsers
+### 2. Feature Modules
 
-- **POSCAR (`poscar-parsing.ts`)**:
-  - **Philosophy**: Fixed line-by-line format.
-  - **Mechanism**: State machine expecting specific blocks (Lattice -> Positions).
-- **INCAR (`incar-parsing.ts`)**:
-  - **Philosophy**: Free-format key-value pairs (`TAG = VALUE`).
-  - **Mechanism**: Tokenizer handles semicolons, comments (`#`, `!`), and line continuations (`\`). Groups tokens into logical statements.
-- **POTCAR (`potcar-parsing.ts`)**:
-  - Extracts `VRHFIN` or `TITEL` headers to identify atomic species.
-- **KPOINTS (`kpoints-parsing.ts`)**:
-  - Parses generation mode (Line 3) and grid dimensions (Line 4).
+Instead of a monolithic linter, features are encapsulated:
 
-### 3. The Linters
+- **Semantic Tokens**: Implemented in `src/features/incar/semantic-tokens.ts` using the `SemanticTokensBuilder`.
+- **Code Actions**: Typos are caught using Levenshtein distance in `src/features/incar/quick-fix.ts`.
+- **Folding**: The `src/features/folding.ts` module parses the file on-the-fly to find logical blocks (like POSCAR coordinate lists).
 
-- **POSCAR (`poscar-linting.ts`)**:
-  - Validates structural constraints (e.g. 3 lattice vectors, correct number of atom coordinates).
-- **INCAR (`incar-linting.ts`)**:
-  - Validates against `src/data/vasp-tags.ts`.
-  - Checks types (Int, Float, Bool, String) and valid string options.
-  - Refuses unknown tags by default (warns).
-- **POTCAR (`potcar-linting.ts`)**:
-  - Cross-references extracted species with `POSCAR` (if present) to detect order mismatches.
-- **KPOINTS (`kpoints-linting.ts`)**:
-  - Validates that grid dimensions are strictly integers.
-  - Checks for recognized generation modes (Monkhorst-Pack, Gamma, etc.).
+### 3. Shared Logic
 
-### 4. Utilities (`util.ts`)
+- **Parsers**: Hand-written parsers in `src/*-parsing.ts` convert raw text into structured objects (AST-like) that other features consume.
+- **Tag Database**: `src/data/vasp-tags.ts` is the central source of truth for VASP command definitions.
 
-- Pure functions for validating numbers, integers, and strings. Kept simple to be testable and reusable.
+## Data Flow
 
-## Data Flow (Validation)
+1. **Change**: Client triggers `didChange`.
+2. **Sync**: Server's `TextDocuments` manager updates internal buffer.
+3. **Dispatch**: Server calls a validator (e.g., `validateIncar`).
+4. **Publish**: Diagnostics are sent back to the client immediately.
+5. **Feature Requests**: On-demand requests (Hover, Symbols, etc.) are routed to the relevant module in `src/features/`.
 
-1. **User types in Editor**: Client sends `textDocument/didChange`.
-2. **Server**: `documents.onDidChangeContent` fires.
-3. **Server**: Detects file type.
-4. **Parsing**: Delegates to `parsePoscar` or `parseIncar`.
-5. **Linting**: Delegates to `validatePoscar` or `validateIncar`.
-6. **Response**: Server sends `textDocument/publishDiagnostics` notification.
-7. **Client**: Renders warning/error squiggles.
+---
+
+### Last Updated: December 2025

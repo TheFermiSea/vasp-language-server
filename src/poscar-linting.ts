@@ -1,13 +1,13 @@
-import { Diagnostic, DiagnosticSeverity, Range } from "vscode-languageserver-types";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { isNumber, isInteger, isLetters } from "./util";
-import { parsePoscar, PoscarBlockType, PoscarLine } from "./poscar-parsing";
-import { countUntil } from "./util";
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { isNumber, isInteger, isLetters } from './util';
+import { parsePoscar, PoscarBlockType, PoscarLine } from './poscar-parsing';
+import { countUntil } from './util';
 
 /**
  * Main validation function for POSCAR files.
  * Orchestrates the parsing and applies specific linting rules to each block.
- * 
+ *
  * @param document - The text document to validate.
  * @returns Array of Diagnostics (errors/warnings).
  */
@@ -16,22 +16,24 @@ export function validatePoscar(document: TextDocument): Diagnostic[] {
 
     // 1. Block-level validation
     // Apply specific linter rules to each line based on its parsed type.
-    const diagnostics = poscarLines.flatMap(l => poscarBlockLinters[l.type](l));
+    const diagnostics = poscarLines.flatMap((l) => poscarBlockLinters[l.type](l));
 
     // 2. Cross-block validation
     // Example: Check if atomic species names match the number of atom counts.
     // (VASP requires one count per species)
-    const speciesNamesLine = poscarLines.find(l => l.type === "speciesNames");
-    const numAtomsLine = poscarLines.find(l => l.type === "numAtoms");
+    const speciesNamesLine = poscarLines.find((l) => l.type === 'speciesNames');
+    const numAtomsLine = poscarLines.find((l) => l.type === 'numAtoms');
 
     if (speciesNamesLine && numAtomsLine) {
         // countUntilComment returns the number of valid tokens before a comment start
         if (countUntilComment(speciesNamesLine) !== countUntilComment(numAtomsLine)) {
-            diagnostics.push(createDiagnostic(
-                "Number of atoms must be specified for each atomic species.",
-                numAtomsLine.line.range,
-                DiagnosticSeverity.Error
-            ));
+            diagnostics.push(
+                createDiagnostic(
+                    'Number of atoms must be specified for each atomic species.',
+                    numAtomsLine.line.range,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
     }
 
@@ -50,7 +52,7 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
     // Comments are free-form, no linting.
     comment: () => [],
 
-    scaling: poscarLine => {
+    scaling: (poscarLine) => {
         const diagnostics: Diagnostic[] = [];
         if (isEmptyLine(poscarLine, diagnostics)) {
             return diagnostics;
@@ -66,20 +68,24 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
             // Highlight the whole invalid range
             const unionRange = Range.create(startToken.range.start, endToken.range.end);
 
-            diagnostics.push(createDiagnostic(
-                "The number of scaling factors must be either 1 or 3.",
-                unionRange,
-                DiagnosticSeverity.Error
-            ));
+            diagnostics.push(
+                createDiagnostic(
+                    'The number of scaling factors must be either 1 or 3.',
+                    unionRange,
+                    DiagnosticSeverity.Error
+                )
+            );
         } else if (numVals === 3) {
             // Per-axis scaling factors must be positive.
-            tokens.forEach(t => {
+            tokens.forEach((t) => {
                 if (+t.text < 0) {
-                    diagnostics.push(createDiagnostic(
-                        "Individual scaling factors must be positive.",
-                        t.range,
-                        DiagnosticSeverity.Error
-                    ));
+                    diagnostics.push(
+                        createDiagnostic(
+                            'Individual scaling factors must be positive.',
+                            t.range,
+                            DiagnosticSeverity.Error
+                        )
+                    );
                 }
             });
         }
@@ -88,20 +94,16 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
 
     lattice: lintVector,
 
-    speciesNames: poscarLine => {
+    speciesNames: (poscarLine) => {
         // Validate that all species names are just letters
         const diagnostics = poscarLine.tokens
-            .filter(t => !isLetters(t.text))
-            .map(t => createDiagnostic(
-                `Species name '${t.text}' is invalid.`,
-                t.range,
-                DiagnosticSeverity.Error
-            ));
+            .filter((t) => !isLetters(t.text))
+            .map((t) => createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error));
         isEmptyLine(poscarLine, diagnostics);
         return diagnostics;
     },
 
-    numAtoms: poscarLine => {
+    numAtoms: (poscarLine) => {
         const diagnostics: Diagnostic[] = [];
         if (isEmptyLine(poscarLine, diagnostics)) {
             return diagnostics;
@@ -109,71 +111,83 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
         const numVals = countUntilComment(poscarLine, diagnostics);
 
         // Atom counts must be positive integers
-        poscarLine.tokens.slice(0, numVals)
-            .filter(t => !isInteger(t.text) || +t.text <= 0)
-            .forEach(t => {
-                diagnostics.push(createDiagnostic(
-                    "Number of atoms needs to be a positive integer.",
-                    t.range,
-                    DiagnosticSeverity.Error
-                ));
+        poscarLine.tokens
+            .slice(0, numVals)
+            .filter((t) => !isInteger(t.text) || +t.text <= 0)
+            .forEach((t) => {
+                diagnostics.push(
+                    createDiagnostic(
+                        'Number of atoms needs to be a positive integer.',
+                        t.range,
+                        DiagnosticSeverity.Error
+                    )
+                );
             });
         return diagnostics;
     },
 
-    selDynamics: poscarLine => lintConstLine(poscarLine, "selective dynamics"),
+    selDynamics: (poscarLine) => lintConstLine(poscarLine, 'selective dynamics'),
 
-    positionMode: poscarLine => lintMode(poscarLine, "direct"),
+    positionMode: (poscarLine) => lintMode(poscarLine, 'direct'),
 
     positions: lintVector,
 
-    positionsSelDyn: poscarLine => {
+    positionsSelDyn: (poscarLine) => {
         // First lint the coordinates (first 3 numbers)
         const diagnostics = lintVector(poscarLine);
         const tokens = poscarLine.tokens;
 
         // Then lint the flags (indices 3, 4, 5)
-        tokens.slice(3, 6)
-            .filter(t => t.text !== "T" && t.text !== "F")
-            .forEach(t => {
-                diagnostics.push(createDiagnostic(
-                    "Selective dynamics flag must be either 'T' or 'F'.",
-                    t.range,
-                    DiagnosticSeverity.Error
-                ));
+        tokens
+            .slice(3, 6)
+            .filter((t) => t.text !== 'T' && t.text !== 'F')
+            .forEach((t) => {
+                diagnostics.push(
+                    createDiagnostic(
+                        "Selective dynamics flag must be either 'T' or 'F'.",
+                        t.range,
+                        DiagnosticSeverity.Error
+                    )
+                );
             });
 
         // Ensure we have exactly 3 flags
         if (tokens.length <= 3) {
-            diagnostics.push(createDiagnostic(
-                "There must be 3 selective-dynamics flags. Too few given.",
-                Range.create(poscarLine.line.range.end, poscarLine.line.range.end),
-                DiagnosticSeverity.Error
-            ));
+            diagnostics.push(
+                createDiagnostic(
+                    'There must be 3 selective-dynamics flags. Too few given.',
+                    Range.create(poscarLine.line.range.end, poscarLine.line.range.end),
+                    DiagnosticSeverity.Error
+                )
+            );
         } else if (tokens.length < 6) {
             const startToken = tokens[3];
             const endToken = tokens[tokens.length - 1];
             const unionRange = Range.create(startToken.range.start, endToken.range.end);
-            diagnostics.push(createDiagnostic(
-                "There must be 3 selective-dynamics flags. Too few given.",
-                unionRange,
-                DiagnosticSeverity.Error
-            ));
+            diagnostics.push(
+                createDiagnostic(
+                    'There must be 3 selective-dynamics flags. Too few given.',
+                    unionRange,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
         return diagnostics;
     },
 
-    lattVelocitiesStart: poscarLine => lintConstLine(poscarLine, "Lattice velocities and vectors"),
+    lattVelocitiesStart: (poscarLine) => lintConstLine(poscarLine, 'Lattice velocities and vectors'),
 
-    lattVelocitiesState: poscarLine => {
+    lattVelocitiesState: (poscarLine) => {
         const tokens = poscarLine.tokens;
         const diagnostics: Diagnostic[] = [];
         if (!isEmptyLine(poscarLine, diagnostics) && !isInteger(tokens[0].text)) {
-            diagnostics.push(createDiagnostic(
-                "Initialization state needs to be an integer",
-                tokens[0].range,
-                DiagnosticSeverity.Error
-            ));
+            diagnostics.push(
+                createDiagnostic(
+                    'Initialization state needs to be an integer',
+                    tokens[0].range,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
         return diagnostics;
     },
@@ -192,7 +206,7 @@ function createDiagnostic(message: string, range: Range, severity: DiagnosticSev
         message: message,
         range: range,
         severity: severity,
-        source: "VASP support"
+        source: 'VASP support'
     };
 }
 
@@ -202,11 +216,13 @@ function createDiagnostic(message: string, range: Range, severity: DiagnosticSev
  */
 function isEmptyLine(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): boolean {
     if (poscarLine.tokens.length === 0) {
-        diagnostics?.push(createDiagnostic(
-            "Line must not be empty.",
-            poscarLine.line.rangeIncludingLineBreak,
-            DiagnosticSeverity.Error
-        ));
+        diagnostics?.push(
+            createDiagnostic(
+                'Line must not be empty.',
+                poscarLine.line.rangeIncludingLineBreak,
+                DiagnosticSeverity.Error
+            )
+        );
         return true;
     }
     return false;
@@ -218,7 +234,7 @@ function isEmptyLine(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): boolea
  */
 function countUntilComment(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): number {
     const tokens = poscarLine.tokens;
-    const numVals = countUntil(tokens, t => t.type === "comment");
+    const numVals = countUntil(tokens, (t) => t.type === 'comment');
 
     // If there is "trailing garbage" that isn't explicitly marked as a comment (no # or !), warn the user.
     if (diagnostics && numVals < tokens.length && !/^[#!]/.test(tokens[numVals].text)) {
@@ -226,12 +242,14 @@ function countUntilComment(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): 
         const endOfLine = poscarLine.line.range.end;
         const range = Range.create(tokenRange.start, endOfLine);
 
-        diagnostics.push(createDiagnostic(
-            "The remainder of this line is ignored by VASP. " +
-            "Consider placing a '#' or '!' in front to make the intention clearer.",
-            range,
-            DiagnosticSeverity.Warning
-        ));
+        diagnostics.push(
+            createDiagnostic(
+                'The remainder of this line is ignored by VASP. ' +
+                    "Consider placing a '#' or '!' in front to make the intention clearer.",
+                range,
+                DiagnosticSeverity.Warning
+            )
+        );
     }
     return numVals;
 }
@@ -250,13 +268,9 @@ function lintVector(poscarLine: PoscarLine): Diagnostic[] {
     countUntilComment(poscarLine, diagnostics);
 
     // Check first 3 tokens are numbers
-    tokens.slice(0, 3).forEach(t => {
+    tokens.slice(0, 3).forEach((t) => {
         if (!isNumber(t.text)) {
-            diagnostics.push(createDiagnostic(
-                "Vector component must be a number.",
-                t.range,
-                DiagnosticSeverity.Error
-            ));
+            diagnostics.push(createDiagnostic('Vector component must be a number.', t.range, DiagnosticSeverity.Error));
         }
     });
 
@@ -266,11 +280,9 @@ function lintVector(poscarLine: PoscarLine): Diagnostic[] {
         const endToken = tokens[tokens.length - 1];
         const unionRange = Range.create(startToken.range.start, endToken.range.end);
 
-        diagnostics.push(createDiagnostic(
-            "Vector must consist of 3 numbers. Too few given.",
-            unionRange,
-            DiagnosticSeverity.Error
-        ));
+        diagnostics.push(
+            createDiagnostic('Vector must consist of 3 numbers. Too few given.', unionRange, DiagnosticSeverity.Error)
+        );
     }
     return diagnostics;
 }
@@ -291,18 +303,22 @@ function lintConstLine(poscarLine: PoscarLine, content: string): Diagnostic[] {
     const regex = new RegExp(`^[${startLower}${startUpper}]`);
 
     if (!regex.test(token.text)) {
-        diagnostics.push(createDiagnostic(
-            `First non-space character on line must be '${startLower}' or '${startUpper}'.`,
-            token.range,
-            DiagnosticSeverity.Error
-        ));
+        diagnostics.push(
+            createDiagnostic(
+                `First non-space character on line must be '${startLower}' or '${startUpper}'.`,
+                token.range,
+                DiagnosticSeverity.Error
+            )
+        );
     } else if (!content.startsWith(token.text.toLowerCase())) {
         // Warn if it matches the letter but isn't the full expected word
-        diagnostics.push(createDiagnostic(
-            `Consider specifying '${content}' to avoid potential mistakes.`,
-            token.range,
-            DiagnosticSeverity.Warning
-        ));
+        diagnostics.push(
+            createDiagnostic(
+                `Consider specifying '${content}' to avoid potential mistakes.`,
+                token.range,
+                DiagnosticSeverity.Warning
+            )
+        );
     }
     return diagnostics;
 }
@@ -314,32 +330,38 @@ function lintMode(poscarLine: PoscarLine, emptyMode?: string) {
     const diagnostics: Diagnostic[] = [];
     if (poscarLine.tokens.length === 0) {
         if (emptyMode) {
-            diagnostics.push(createDiagnostic(
-                `Consider specifying '${emptyMode}' instead of an empty line to avoid potential mistakes.`,
-                poscarLine.line.rangeIncludingLineBreak,
-                DiagnosticSeverity.Warning
-            ));
+            diagnostics.push(
+                createDiagnostic(
+                    `Consider specifying '${emptyMode}' instead of an empty line to avoid potential mistakes.`,
+                    poscarLine.line.rangeIncludingLineBreak,
+                    DiagnosticSeverity.Warning
+                )
+            );
         }
     } else {
         const token = poscarLine.tokens[0];
-        const firstLetter = token.text ? token.text[0].toLowerCase() : "";
+        const firstLetter = token.text ? token.text[0].toLowerCase() : '';
 
         // VASP allows 'C', 'K', or 'D' to specify modes.
-        if (firstLetter === "c" || firstLetter === "k") {
-            if (!"artesian".startsWith(token.text.slice(1).toLowerCase())) {
-                diagnostics.push(createDiagnostic(
-                    "Consider specifying 'cartesian' to avoid potential mistakes.",
-                    token.range,
-                    DiagnosticSeverity.Warning
-                ));
+        if (firstLetter === 'c' || firstLetter === 'k') {
+            if (!'artesian'.startsWith(token.text.slice(1).toLowerCase())) {
+                diagnostics.push(
+                    createDiagnostic(
+                        "Consider specifying 'cartesian' to avoid potential mistakes.",
+                        token.range,
+                        DiagnosticSeverity.Warning
+                    )
+                );
             }
         } else {
-            if (!"direct".startsWith(token.text.toLowerCase())) {
-                diagnostics.push(createDiagnostic(
-                    "Consider specifying 'direct' to avoid potential mistakes.",
-                    token.range,
-                    DiagnosticSeverity.Warning
-                ));
+            if (!'direct'.startsWith(token.text.toLowerCase())) {
+                diagnostics.push(
+                    createDiagnostic(
+                        "Consider specifying 'direct' to avoid potential mistakes.",
+                        token.range,
+                        DiagnosticSeverity.Warning
+                    )
+                );
             }
         }
     }

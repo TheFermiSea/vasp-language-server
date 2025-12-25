@@ -1,10 +1,10 @@
-import { CodeAction, CodeActionKind, Diagnostic, TextEdit } from "vscode-languageserver/node";
-import { VASP_TAGS } from "./data/vasp-tags";
-import { levenshteinDistance } from "./util";
+import { CodeAction, CodeActionKind, Diagnostic, TextEdit } from 'vscode-languageserver/node';
+import { VASP_TAGS } from './data/vasp-tags';
+import { levenshteinDistance } from './util';
 
 /**
  * Generates Code Actions (Quick Fixes) for INCAR diagnostics.
- * 
+ *
  * @param uri - The document URI.
  * @param diagnostics - The diagnostics in the current context.
  * @returns An array of CodeAction items.
@@ -14,7 +14,7 @@ export function getIncarCodeActions(uri: string, diagnostics: Diagnostic[]): Cod
 
     for (const diagnostic of diagnostics) {
         // Look for "Unknown tag" messages
-        if (diagnostic.message.startsWith("Unknown tag")) {
+        if (diagnostic.message.startsWith('Unknown tag')) {
             // Extract the unknown tag name from the message
             // Pattern: "Unknown tag 'TAGNAME'. Check spelling..."
             const match = diagnostic.message.match(/Unknown tag '(.+)'/);
@@ -42,9 +42,7 @@ export function getIncarCodeActions(uri: string, diagnostics: Diagnostic[]): Cod
                         diagnostics: [diagnostic],
                         edit: {
                             changes: {
-                                [uri]: [
-                                    TextEdit.replace(diagnostic.range, closestTag)
-                                ]
+                                [uri]: [TextEdit.replace(diagnostic.range, closestTag)]
                             }
                         }
                     };
