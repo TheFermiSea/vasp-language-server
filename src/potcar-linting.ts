@@ -21,11 +21,12 @@ export function validatePotcar(document: TextDocument): Diagnostic[] {
     }
 
     // Attempt to find POSCAR in the same directory
-    const fileUri = document.uri.replace('file://', '');
-    // Note: URI handling can be complex (encoded spaces etc). For standard FS paths:
-    const dir = path.dirname(fileUri);
-    // Try POSCAR or CONTCAR
-    const poscarPath = path.join(dir, 'POSCAR');
+    // Handles file:/// and encoded spaces/chars
+    const fileUri = decodeURIComponent(document.uri);
+    const filePath = fileUri.replace(/^file:\/\/\/?/, '');
+    const dir = path.dirname(filePath);
+    // Try POSCAR
+    const poscarPath = path.join(process.platform === 'win32' ? '' : '/', dir, 'POSCAR');
 
     if (fs.existsSync(poscarPath)) {
         try {
