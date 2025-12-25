@@ -1,0 +1,6 @@
+SYSTEM = Standard VASP 6.5 Calculation
+ENCUT = 520
+ISMEAR = 0
+SIGMA = 0.05
+LREAL = Auto
+ALGO = Fast

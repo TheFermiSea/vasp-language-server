@@ -1,0 +1,5 @@
+SYSTEM = Broken Calculation
+ENCUT = TooHigh
+ISMEAR = 1.5  # Should be int
+LREAL = Maybe # Invalid boolean
+UNKNOWN_TAG = 123
