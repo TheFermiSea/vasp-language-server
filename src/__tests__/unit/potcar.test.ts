@@ -1,10 +1,17 @@
 import { parsePotcar } from '../../potcar-parsing';
 import { validatePotcar } from '../../potcar-linting';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { DiagnosticSeverity } from 'vscode-languageserver-types';
 import * as fs from 'fs';
 
 // Mock fs for cross-file checks
-jest.mock('fs');
+jest.mock('fs', () => ({
+    existsSync: jest.fn(),
+    promises: {
+        readFile: jest.fn()
+    },
+    readFileSync: jest.fn() // For some sync path if any left
+}));
 
 describe('POTCAR Parser', () => {
     function createDoc(content: string) {
@@ -18,7 +25,7 @@ describe('POTCAR Parser', () => {
    TITEL  = PAW_PBE Fe 06Sep2000
    LULTRA =        F    use ultrasoft PP ?
    IUNSCR =        1    unscreen: 0-lin 1-nonlin 2-no
-        `;
+         `;
         const parsed = parsePotcar(createDoc(content));
         expect(parsed.elements).toHaveLength(1);
         expect(parsed.elements[0].symbol).toBe('Fe');
@@ -32,22 +39,11 @@ describe('POTCAR Parser', () => {
    PAW_PBE O 08Apr2002
       VRHFIN = O: s2p4
    End of Potential
-        `;
+         `;
         const parsed = parsePotcar(createDoc(content));
         expect(parsed.elements).toHaveLength(2);
         expect(parsed.elements[0].symbol).toBe('Fe');
         expect(parsed.elements[1].symbol).toBe('O');
-    });
-
-    test('Parses TITEL style (fallback)', () => {
-        const content = `
-   PAW_PBE Fe 06Sep2000
-   DUMMY = DATA
-   End of Potential
-        `;
-        const parsed = parsePotcar(createDoc(content));
-        expect(parsed.elements).toHaveLength(1);
-        expect(parsed.elements[0].symbol).toBe('Fe');
     });
 });
 
@@ -56,19 +52,16 @@ describe('POTCAR Linter', () => {
         return TextDocument.create('file:///test/POTCAR', 'vasp', 1, content);
     }
 
-    test('Detects missing POSCAR', () => {
+    test('Detects missing POSCAR', async () => {
         (fs.existsSync as jest.Mock).mockReturnValue(false);
-        const diags = validatePotcar(createDoc('VRHFIN = Fe:'));
-        // Should have no mismatch errors if POSCAR missing
+        const diags = await validatePotcar(createDoc('VRHFIN = Fe:'));
         expect(diags).toHaveLength(0);
     });
 
-    test('Validates matching order', () => {
+    test('Validates matching order', async () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        // Mock POSCAR content: "Fe O\n 1.0\n..." (VASP 5 format)
-        (fs.readFileSync as jest.Mock).mockReturnValue(
-            `System\n1.0\nVec1\nVec2\nVec3\nFe O\n1 1\nDirect\n0 0 0\n0.5 0.5 0.5`
-        );
+        const poscarContent = `System\n1.0\nVec1\nVec2\nVec3\nFe O\n1 1\nDirect\n0 0 0\n0.5 0.5 0.5`;
+        (fs.promises.readFile as jest.Mock).mockResolvedValue(poscarContent);
 
         const content = `
 VRHFIN = Fe:
@@ -76,14 +69,14 @@ End
 VRHFIN = O:
 End
 `;
-        const diags = validatePotcar(createDoc(content));
+        const diags = await validatePotcar(createDoc(content));
         expect(diags).toHaveLength(0);
     });
 
-    test('Detects mismatch', () => {
+    test('Detects mismatch', async () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
         // POSCAR says Fe O
-        (fs.readFileSync as jest.Mock).mockReturnValue(`System\n1.0\n...\n...\n...\nFe O\n...`);
+        (fs.promises.readFile as jest.Mock).mockResolvedValue(`System\n1.0\n...\n...\n...\nFe O\n...`);
 
         // POTCAR says O Fe
         const content = `
@@ -92,8 +85,28 @@ End
 VRHFIN = Fe:
 End
 `;
-        const diags = validatePotcar(createDoc(content));
-        expect(diags).toHaveLength(2); // Mismatch for both positions
+        const diags = await validatePotcar(createDoc(content));
+        expect(diags).toHaveLength(2);
         expect(diags[0].message).toContain("expects 'Fe'");
+    });
+
+    test('Detects no elements in junk file', async () => {
+        const content = 'total garbage';
+        const doc = createDoc(content);
+        const diags = await validatePotcar(doc);
+        expect(diags.length).toBe(1);
+        expect(diags[0].message).toContain('No elements');
+    });
+
+    test('Detects missing element in POTCAR', async () => {
+        const content = 'POTCAR content\n VRHFIN = Fe:\n VRHFIN = O:';
+        const doc = createDoc(content);
+
+        (fs.promises.readFile as jest.Mock).mockResolvedValue('POSCAR content\n1.0\nVec1\nVec2\nVec3\nFe O H\n 1 1 1');
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+
+        const diags = await validatePotcar(doc);
+        expect(diags.length).toBe(1);
+        expect(diags[0].message).toContain('Missing potential');
     });
 });

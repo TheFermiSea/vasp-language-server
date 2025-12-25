@@ -1,16 +1,17 @@
 import { DocumentSymbol, SymbolKind, Range } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { parseIncar } from './incar-parsing';
+import { IncarDocument, parseIncar } from './incar-parsing';
+import { PoscarLine } from './poscar-parsing';
 
 /**
  * Generates Document Symbols for INCAR files.
  * Maps every TAG = VALUE pair to a Variable symbol.
  */
-export function getIncarSymbols(document: TextDocument): DocumentSymbol[] {
+export function getIncarSymbols(document: TextDocument, parsed?: IncarDocument): DocumentSymbol[] {
     const symbols: DocumentSymbol[] = [];
-    const parsed = parseIncar(document);
+    const myParsed = parsed || parseIncar(document);
 
-    for (const stmt of parsed.statements) {
+    for (const stmt of myParsed.statements) {
         // Tag name as the symbol name
         const name = stmt.tag.text;
 
@@ -36,7 +37,7 @@ export function getIncarSymbols(document: TextDocument): DocumentSymbol[] {
  * Generates Document Symbols for POSCAR files.
  * Uses heuristics to identify sections (Lattice, Species, Coordinates).
  */
-export function getPoscarSymbols(document: TextDocument): DocumentSymbol[] {
+export function getPoscarSymbols(document: TextDocument, parsed?: PoscarLine[]): DocumentSymbol[] {
     const symbols: DocumentSymbol[] = [];
     const text = document.getText();
     const lines = text.split(/\r?\n/);

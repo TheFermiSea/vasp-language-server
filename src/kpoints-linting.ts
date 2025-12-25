@@ -1,7 +1,7 @@
-import { KpointsData } from './kpoints-parsing';
+import { KpointsDocument } from './kpoints-parsing';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
 
-export function validateKpoints(data: KpointsData): Diagnostic[] {
+export function validateKpoints(data: KpointsDocument): Diagnostic[] {
     // Start with parser diagnostics
     const diagnostics: Diagnostic[] = [...data.diagnostics];
 
@@ -25,7 +25,7 @@ export function validateKpoints(data: KpointsData): Diagnostic[] {
     if (data.numKpoints === 0) {
         // Grid check
         if (data.grid.length === 3) {
-            if (data.grid.some((v) => v <= 0)) {
+            if (data.grid.some((v: number) => v <= 0)) {
                 diagnostics.push({
                     severity: DiagnosticSeverity.Error,
                     range: { start: { line: 3, character: 0 }, end: { line: 3, character: 10 } }, // Approx range

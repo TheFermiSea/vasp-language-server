@@ -1,30 +1,65 @@
+# Neovim Setup Guide
+>
+> **Recommended**: Use [LazyVim](https://lazyvim.org) or `lazy.nvim`.
 
-# Neovim Setup Guide for VASP Language Server
+## ⚡ Accelerated Setup
 
-The VASP Language Server is built on the standard Language Server Protocol (LSP), making it fully compatible with Neovim's built-in LSP client (requires Neovim 0.5+, recommended 0.9+ for Semantic Tokens).
-
-## 1. Prerequisites
-
-- **Node.js**: The server runs on Node.js.
-- **npm**: To install the server.
-
-## 2. Installation
-
-While we work on adding this to `mason.nvim`, you can install it manually:
+### 1. Install the Server
 
 ```bash
-# From the source directory
-npm install
-npm run compile
-# The executable is now at ./out/server.js
+npm install -g vasp-language-server
 ```
 
-## 3. Configuration (lua)
+### 2. Configure LazyVim
 
-Add the following to your `init.lua` or `plugins/lsp.lua`. This configuration handles:
+Add this to `lua/plugins/vasp.lua`:
 
-1. **Filetype Detection**: Automatically detecting `INCAR`, `POSCAR`, `POTCAR`, `KPOINTS`.
-2. **Server Setup**: Launching the server via `stdio`.
+```lua
+return {
+  {
+    "neovim/nvim-lspconfig",
+    opts = {
+      servers = {
+        vasp_ls = {
+          -- Defaults to looking for 'vasp-lsp' in PATH
+          cmd = { "vasp-lsp", "--stdio" }, 
+          filetypes = { "vasp" },
+        },
+      },
+      setup = {
+        vasp_ls = function()
+          -- Add filetype detection for VASP files
+          vim.filetype.add({
+            pattern = {
+              ['.*INCAR.*'] = 'vasp',
+              ['.*POSCAR.*'] = 'vasp',
+              ['.*CONTCAR.*'] = 'vasp',
+              ['.*POTCAR.*'] = 'vasp',
+              ['.*KPOINTS.*'] = 'vasp',
+            },
+          })
+        end,
+      },
+    },
+  },
+}
+```
+
+---
+
+## 🔌 Recommended Plugins
+
+Maximize your productivity with these plugins:
+
+1. **[nvim-cmp](https://github.com/hrsh7th/nvim-cmp)**: For intelligent autocompletion of VASP tags.
+2. **[telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)**: Use `:Telescope lsp_document_symbols` to navigate large INCAR/POSCAR files.
+3. **[catppuccin](https://github.com/catppuccin/nvim)**: A theme that supports our Semantic Tokens (colors booleans, numbers, and tags distinctly).
+
+---
+
+## 🛠 Manual Setup (Vanilla `init.lua`)
+
+If you don't use a plugin manager:
 
 ```lua
 -- 1. Register Filetypes
@@ -38,14 +73,14 @@ vim.filetype.add({
   },
 })
 
--- 2. Configure LSP
+-- 2. Setup LSP
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
 if not configs.vasp_ls then
   configs.vasp_ls = {
     default_config = {
-      cmd = { 'node', '/path/to/vasp-language-server/out/server.js', '--stdio' },
+      cmd = { 'vasp-lsp', '--stdio' },
       filetypes = { 'vasp' },
       root_dir = lspconfig.util.root_pattern('.git', 'INCAR', 'POSCAR'),
       settings = {},
@@ -53,29 +88,5 @@ if not configs.vasp_ls then
   }
 end
 
-lspconfig.vasp_ls.setup({
-  on_attach = function(client, bufnr)
-    -- Enable Semantic Tokens (Highlighter)
-    client.server_capabilities.semanticTokensProvider = {
-      full = true,
-      legend = {
-        tokenTypes = { "property", "keyword", "number", "comment", "string" },
-        tokenModifiers = { "declaration" }
-      },
-      range = false,
-    }
-  end,
-})
+lspconfig.vasp_ls.setup{}
 ```
-
-## 4. Feature Checklist
-
-| Feature | Neovim Support | Notes |
-| :--- | :--- | :--- |
-| **Diagnostics** | ✅ Built-in | Works out of the box with `vim.diagnostic`. |
-| **Auto-Completion** | ✅ Built-in | Works with `nvim-cmp` or `omnifunc`. |
-| **Hover Docs** | ✅ Built-in | Use `K` or `vim.lsp.buf.hover()`. |
-| **Code Actions** | ✅ Built-in | Use `vim.lsp.buf.code_action()` (fixes typos). |
-| **Outline** | ✅ Built-in | Use `Telescope lsp_document_symbols` or `Aerial`. |
-| **Semantic Tokens** | ✅ Built-in (0.9+) | Requires a theme supporting semantic highlights (e.g., Catppuccin, Tokyo Night). |
-| **Folding** | ✅ Built-in | Use `set foldmethod=expr foldexpr=nvim_treesitter#foldexpr()` or LSP folding capabilities. |

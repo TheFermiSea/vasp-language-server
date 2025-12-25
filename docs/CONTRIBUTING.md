@@ -1,35 +1,41 @@
 # Contributing to VASP Language Server
 
-Thank you for your interest in contributing!
+Thank you for your interest in contributing to the VASP Language Server! We aim to provide the best possible developer experience for computational physicists.
 
 ## Development Setup
 
 1. **Prerequisites**: Node.js (v18+) and npm.
 2. **Install**: `npm install`
 3. **Build**: `npm run build`
-4. **Lint & Format**: We use ESLint and Prettier.
-   - `npm run lint`: Check for errors.
-   - `npm run format`: Format code.
+4. **Test**: `npm test`
+5. **Lint & Format**:
+   - `npm run lint`: Run ESLint checks (strict no-any policy).
+   - `npm run format`: Apply Prettier formatting.
 
 ## Project Structure
 
-We follow a feature-based organization:
+We follow a modular, feature-based organization:
 
-- `src/features/`: Contains LSP features (Hover, Completion, etc.) grouped by domain.
-- `src/*-parsing.ts`: Core parsers for VASP file formats.
-- `src/__tests__/`: Unit and integration tests. Please add tests for new features.
+- `src/lsp-server.ts`: The main coordinator class (`LspServer`).
+- `src/features/`: Contains LSP feature implementations (Hover, Completion, Semantic Tokens, etc.).
+- `src/document-cache.ts`: Centralized AST caching layer.
+- `src/*-parsing.ts`: Core parsers for VASP file formats (INCAR, POSCAR, KPOINTS).
+- `src/__tests__/`: Comprehensive test suites.
 
 ## How to Add a New Feature
 
-1. **Define the logic**: Create a new file in `src/features/`.
-2. **Register in Server**: Import your function in `src/server.ts` and register it in the appropriate `connection.on...` handler.
-3. **Add Tests**: Create a unit test in `src/__tests__/unit/`.
+1. **Implement Logic**: Create your feature in `src/features/` or a new top-level file if it's a core parser.
+2. **Utilize Caching**: Ensure your feature uses the `DocumentCache` to retrieve pre-parsed ASTs rather than re-parsing from scratch.
+3. **Register in LspServer**: Wire your function into the `LspServer` class handlers (in `src/lsp-server.ts`).
+4. **Add Tests**:
+   - Add unit tests in `src/__tests__/unit/`.
+   - Add integration tests in `src/__tests__/integration/server.test.ts` if appropriate.
 
 ## Pull Requests
 
-- Ensure `npm run lint` and `npm test` pass.
-- Maintain a clear and concise coding style.
-- Update `README.md` if the change affects users.
+- **Quality**: Ensure `npm run lint` and `npm test` pass.
+- **Performance**: If modifying parsers, run `npm test src/__tests__/unit/stress-tests.test.ts` to ensure no performance regressions.
+- **Documentation**: Update [README.md](../README.md) or relevant docs if your feature changes user-facing behavior.
 
 ---
 

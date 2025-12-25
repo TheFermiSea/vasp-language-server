@@ -1,12 +1,11 @@
 import { SemanticTokensBuilder, SemanticTokens } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { parseIncar } from '../../incar-parsing';
+import { parseIncar, IncarDocument } from '../../incar-parsing';
 import { TokenType, TokenModifier } from '../semantic-tokens-legend';
 import { isNumber } from '../../util';
 
-export function getIncarSemanticTokens(document: TextDocument): SemanticTokens {
+export function getIncarSemanticTokens(document: TextDocument, parsed: IncarDocument): SemanticTokens {
     const builder = new SemanticTokensBuilder();
-    const parsed = parseIncar(document);
 
     // Collect all items to simplify sorting
     interface HighlightItem {

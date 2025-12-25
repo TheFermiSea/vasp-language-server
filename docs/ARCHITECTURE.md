@@ -4,19 +4,21 @@ This document explains the internal design of the VASP Language Server.
 
 ## High-Level Design
 
-The project follows a standard **Language Server Protocol (LSP)** client-server architecture.
+The project follows a standard **Language Server Protocol (LSP)** client-server architecture, optimized for high performance and low memory overhead when handling large scientific datasets (e.g., massive POSCAR files).
 
-- **Client**: The editor (e.g., Neovim, VS Code). Handles UI and text rendering.
-- **Server**: This Node.js process. Handles parsing, validation, and metadata.
-- **Transport**: Standard JSON-RPC over `stdio`.
+- **Client**: The editor (e.g., Neovim, VS Code).
+- **Server**: This Node.js process. Parses VASP files and provides intelligent feedback.
+- **Transport**: JSON-RPC over `stdio`.
 
 ## Directory Structure
 
-We recently moved to a feature-based modular structure to keep the codebase maintainable:
+We use a feature-based modular structure with a centralized caching layer:
 
 ```bash
 src/
-├── server.ts           # Entry point. Directs events to feature managers.
+├── server.ts           # Entry point (Thin wrapper)
+├── lsp-server.ts       # Core LspServer class (Main coordinator)
+├── document-cache.ts   # AST Caching layer (Standardized VaspStructure)
 ├── features/           # LSP Feature Implementations
 │   ├── folding.ts      # Folding Range logic
 │   ├── incar/          # INCAR-specific features
@@ -25,40 +27,51 @@ src/
 │   │   ├── quick-fix.ts
 │   │   └── semantic-tokens.ts
 │   └── ... 
-├── document-symbols.ts # Outline logic for INCAR/POSCAR.
-├── incar-parsing.ts    # INCAR-specific tokenization.
-├── poscar-parsing.ts   # POSCAR-specific state machine parser.
-├── data/
-│   └── vasp-tags.ts    # Static VASP tag database.
-└── util.ts             # Shared utilities (Levenstein distance, isNumber, etc.)
+├── document-symbols.ts # Outline logic for INCAR/POSCAR
+├── incar-parsing.ts    # INCAR AST parser
+├── poscar-parsing.ts   # POSCAR AST parser (100k atom optimized)
+├── kpoints-parsing.ts  # KPOINTS AST parser
+├── potcar-linting.ts   # Async POTCAR/POSCAR consistency check
+└── data/
+    └── vasp-tags.ts    # Static VASP tag database
 ```
 
 ## Core Components
 
-### 1. The Server (`src/server.ts`)
+### 1. The LspServer (`src/lsp-server.ts`)
 
-The server acts as a thin coordinator. It manages the `vscode-languageserver` connection and document synchronization. When an LSP request arrives (e.g., `textDocument/hover`), it identifies the file type and calls the corresponding feature module.
+The `LspServer` class is the central nervous system. It:
 
-### 2. Feature Modules
+- Manages the `_Connection`.
+- Orchestrates `validateTextDocument` across different VASP formats.
+- Dispatches events to optimized feature managers.
+- **Strictly Typed**: Uses `vscode-languageserver` interfaces for all handlers.
 
-Instead of a monolithic linter, features are encapsulated:
+### 2. Document Cache (`src/document-cache.ts`)
 
-- **Semantic Tokens**: Implemented in `src/features/incar/semantic-tokens.ts` using the `SemanticTokensBuilder`.
-- **Code Actions**: Typos are caught using Levenshtein distance in `src/features/incar/quick-fix.ts`.
-- **Folding**: The `src/features/folding.ts` module parses the file on-the-fly to find logical blocks (like POSCAR coordinate lists).
+To prevent redundant parsing across multiple LSP features (e.g., Outline and Folding both needing the same POSCAR AST), we use a `DocumentCache`.
 
-### 3. Shared Logic
+- It stores a `VaspStructure` (a union of `IncarDocument`, `PoscarDocument`, or `KpointsDocument`).
+- It is automatically invalidated when file content changes.
 
-- **Parsers**: Hand-written parsers in `src/*-parsing.ts` convert raw text into structured objects (AST-like) that other features consume.
-- **Tag Database**: `src/data/vasp-tags.ts` is the central source of truth for VASP command definitions.
+### 3. High-Performance Parsers
+
+Our parsers are hand-written for speed and memory efficiency:
+
+- **POSCAR**: Uses a specialized state machine to handle files with 100,000+ atoms in <400ms.
+- **INCAR**: Converts assignments into a key-value AST with support for comments and types.
+
+### 4. Asynchronous Linting
+
+Features like **POTCAR/POSCAR consistency checks** are implemented asynchronously (`src/potcar-linting.ts`) to ensure the main LSP thread never blocks on disk I/O, keeping the editor responsive.
 
 ## Data Flow
 
-1. **Change**: Client triggers `didChange`.
-2. **Sync**: Server's `TextDocuments` manager updates internal buffer.
-3. **Dispatch**: Server calls a validator (e.g., `validateIncar`).
-4. **Publish**: Diagnostics are sent back to the client immediately.
-5. **Feature Requests**: On-demand requests (Hover, Symbols, etc.) are routed to the relevant module in `src/features/`.
+1. **didChange**: Client sends update.
+2. **Standardize**: `LspServer` parses the document and updates the `DocumentCache`.
+3. **Linter**: `LspServer` runs the relevant linter (e.g., `validateIncar`) using the cached AST.
+4. **Publish**: Diagnostics are pushed to the client.
+5. **Feature Requests**: On-demand requests (Hover, Symbols, etc.) pull the pre-parsed AST from the cache and return results instantly.
 
 ---
 

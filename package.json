@@ -1,8 +1,11 @@
 {
   "name": "vasp-language-server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Production-grade Language Server for Vienna Ab initio Simulation Package (VASP) input files (INCAR, POSCAR, KPOINTS, POTCAR).",
+  "main": "out/server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "test": "jest",
     "build": "tsc",
@@ -22,8 +25,16 @@
     "potcar",
     "kpoints"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "TheFermiSea",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheFermiSea/vasp-language-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TheFermiSea/vasp-language-server/issues"
+  },
+  "homepage": "https://github.com/TheFermiSea/vasp-language-server#readme",
   "type": "commonjs",
   "dependencies": {
     "@joplin/turndown-plugin-gfm": "^1.0.64",

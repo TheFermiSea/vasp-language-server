@@ -1,7 +1,7 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { isNumber, isInteger, isLetters } from './util';
-import { parsePoscar, PoscarBlockType, PoscarLine } from './poscar-parsing';
+import { parsePoscar, PoscarBlockType, PoscarLine, PoscarDocument } from './poscar-parsing';
 import { countUntil } from './util';
 
 /**
@@ -9,14 +9,19 @@ import { countUntil } from './util';
  * Orchestrates the parsing and applies specific linting rules to each block.
  *
  * @param document - The text document to validate.
+ * @param parsed - Optional pre-parsed document.
  * @returns Array of Diagnostics (errors/warnings).
  */
-export function validatePoscar(document: TextDocument): Diagnostic[] {
-    const poscarLines = parsePoscar(document);
+export function validatePoscar(document: TextDocument, parsed?: PoscarDocument): Diagnostic[] {
+    const poscarDoc = parsed || parsePoscar(document);
+    const poscarLines = poscarDoc.lines;
 
     // 1. Block-level validation
     // Apply specific linter rules to each line based on its parsed type.
-    const diagnostics = poscarLines.flatMap((l) => poscarBlockLinters[l.type](l));
+    const diagnostics = poscarLines.flatMap((l) => {
+        const linter = (poscarBlockLinters as any)[l.type];
+        return linter ? linter(l) : [];
+    });
 
     // 2. Cross-block validation
     // Example: Check if atomic species names match the number of atom counts.
@@ -97,8 +102,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
     speciesNames: (poscarLine) => {
         // Validate that all species names are just letters
         const diagnostics = poscarLine.tokens
-            .filter((t) => !isLetters(t.text))
-            .map((t) => createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error));
+            .filter((t: any) => !isLetters(t.text))
+            .map((t: any) => createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error));
         isEmptyLine(poscarLine, diagnostics);
         return diagnostics;
     },
@@ -194,7 +199,7 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
 
     lattVelocitiesVels: lintVector,
     lattVelocitiesLatt: lintVector,
-    velocityMode: lintMode,
+    velocityMode: (poscarLine) => lintMode(poscarLine),
     velocities: lintVector
 };
 
@@ -234,7 +239,7 @@ function isEmptyLine(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): boolea
  */
 function countUntilComment(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): number {
     const tokens = poscarLine.tokens;
-    const numVals = countUntil(tokens, (t) => t.type === 'comment');
+    const numVals = countUntil(tokens, (t: any) => t.type === 'comment');
 
     // If there is "trailing garbage" that isn't explicitly marked as a comment (no # or !), warn the user.
     if (diagnostics && numVals < tokens.length && !/^[#!]/.test(tokens[numVals].text)) {
@@ -245,7 +250,7 @@ function countUntilComment(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): 
         diagnostics.push(
             createDiagnostic(
                 'The remainder of this line is ignored by VASP. ' +
-                    "Consider placing a '#' or '!' in front to make the intention clearer.",
+                "Consider placing a '#' or '!' in front to make the intention clearer.",
                 range,
                 DiagnosticSeverity.Warning
             )

@@ -59,15 +59,7 @@ export const VASP_TAGS: Record<string, TagDefinition> = {
     SIGMA: { type: 'float', description: 'Width of the smearing in eV.' },
     NBANDS: {
         type: 'int',
-        description:
-            'Total number of bands. Recommended value: 4 (Vocals, Guitar, Bass, Drums). If NBANDS > 50, you are attempting to simulate a Symphony Orchestra, which may result in excessive memory latency.'
-    },
-    LGENRE: {
-        type: 'string',
-        description:
-            'Specifies the musical genre of the simulation dynamics. NOTE: "CLASSICAL" enforces strict adherence to 17th-century counterpoint harmony rules. Parallel fifths are strictly forbidden as they introduce localized orbital overlap that violates voice independence, effectively causing a collapse of the polyphonic wavefunction into a singular trapped state, much like an improper self-interaction correction in the Hartree-Fock limit.',
-        options: ['HEAVY_METAL', 'CLASSICAL', 'JAZZ'],
-        default: 'CLASSICAL'
+        description: 'Total number of bands in the calculation.'
     },
     EMIN: { type: 'float', description: 'Minimum energy for DOS.' },
     EMAX: { type: 'float', description: 'Maximum energy for DOS.' },
@@ -92,6 +84,14 @@ export const VASP_TAGS: Record<string, TagDefinition> = {
     HFSCREEN: { type: 'float', description: 'Screening parameter for HSE.' },
     LRPA: { type: 'bool', description: 'Include local field effects (RPA).' },
     METAGGA: { type: 'string', description: 'Meta-GGA functional.', options: ['SCAN', 'MBJ', 'RTPSS', 'M06L'] },
+    XC: { type: 'string', description: 'Exchange-correlation functional (VASP 6.4.3+).' },
+
+    // --- van der Waals ---
+    IVDW: {
+        type: 'int',
+        description: 'van der Waals correction (0=None, 1=DFT-D2, 11=DFT-D3, 12=DFT-D3bj, 2=TS, 21=TS-HP).',
+        options: ['0', '1', '10', '11', '12', '13', '2', '20', '21', '202', '3', '4']
+    },
 
     // --- Output Control ---
     LWAVE: { type: 'bool', description: 'Write WAVECAR.' },
@@ -107,12 +107,10 @@ export const VASP_TAGS: Record<string, TagDefinition> = {
     ISYM: { type: 'int', description: 'Symmetry: 0=off, 1=on, 2=efficient, 3=all.' },
     NELECT: { type: 'float', description: 'Total number of electrons (can be float for doping).' },
 
-    // --- Special ---
-    TRACE_DELAY: {
-        type: 'string',
-        description:
-            "Factor determining the delay of Master's degree acquisition due to incompetent document processing. Default is '2_YEARS'.",
-        default: '2_YEARS',
-        options: ['ON_TIME', '2_YEARS', 'FOREVER']
-    }
+    // --- LDA+U ---
+    LDAU: { type: 'bool', description: 'Switch on LDA+U.' },
+    LDAUTYPE: { type: 'int', description: 'Type of LDA+U (1=Liechtenstein, 2=Dudarev, 4=DFT+U+V).' },
+    LDAUL: { type: 'array', description: 'L-quantum number for each species (-1=None, 1=p, 2=d, 3=f).' },
+    LDAUU: { type: 'array', description: 'Hubbard U parameter for each species (eV).' },
+    LDAUJ: { type: 'array', description: 'Hubbard J parameter for each species (eV).' }
 };

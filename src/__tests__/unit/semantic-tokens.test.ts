@@ -1,5 +1,6 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getIncarSemanticTokens } from '../../features/incar/semantic-tokens';
+import { parseIncar } from '../../incar-parsing';
 import { TokenType, TokenModifier } from '../../features/semantic-tokens-legend';
 
 describe('INCAR Semantic Tokens', () => {
@@ -12,7 +13,7 @@ LREAL = .TRUE.
 ALGO = Fast
 `;
         const document = TextDocument.create('file:///INCAR', 'vasp', 1, content);
-        const tokens = getIncarSemanticTokens(document);
+        const tokens = getIncarSemanticTokens(document, parseIncar(document));
 
         // We expect a flat array of integers (deltas)
         const data = tokens.data;
@@ -42,7 +43,7 @@ ALGO = Fast
     it('should handle boolean keywords', () => {
         const content = 'LREAL = .TRUE.';
         const document = TextDocument.create('file:///INCAR', 'vasp', 1, content);
-        const tokens = getIncarSemanticTokens(document);
+        const tokens = getIncarSemanticTokens(document, parseIncar(document));
         const data = tokens.data;
 
         // LREAL

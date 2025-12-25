@@ -55,6 +55,13 @@ export interface PoscarLine {
 }
 
 /**
+ * Represents the full parsed result of a POSCAR file.
+ */
+export interface PoscarDocument {
+    lines: PoscarLine[];
+}
+
+/**
  * A single lexical token (e.g., a number, a keyword, a comment).
  */
 interface Token {
@@ -274,9 +281,9 @@ function getDocumentLines(document: TextDocument): LSPTextLine[] {
  * Reads the document sequentially and assigns a BlockType to each line based on VASP's fixed structure.
  *
  * @param document - The full text document.
- * @returns Array of Parsed POSCAR lines.
+ * @returns Parsed POSCAR document.
  */
-export function parsePoscar(document: TextDocument): PoscarLine[] {
+export function parsePoscar(document: TextDocument): PoscarDocument {
     const poscarLines: PoscarLine[] = [];
     const lines = getDocumentLines(document);
     const lineCount = lines.length;
@@ -338,7 +345,7 @@ export function parsePoscar(document: TextDocument): PoscarLine[] {
     processLine('numAtoms');
 
     // Safety check for empty file or partial file
-    if (poscarLines.length === 0) return poscarLines;
+    if (poscarLines.length === 0) return { lines: poscarLines };
 
     // Calculate total atoms to know how many position lines to read
     const numAtomsLine = poscarLines.find((l) => l.type === 'numAtoms');
@@ -366,5 +373,5 @@ export function parsePoscar(document: TextDocument): PoscarLine[] {
     processLine('velocityMode');
     processLine('velocities', numAtoms);
 
-    return poscarLines;
+    return { lines: poscarLines };
 }

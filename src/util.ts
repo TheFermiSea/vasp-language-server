@@ -14,15 +14,10 @@ export function countUntil<T>(arr: Array<T>, condition: (val: T) => boolean): nu
     return count;
 }
 
-/**
- * Checks if a string represents a valid real number (float or integer).
- * Matches scientific notation (e.g. 1.0E-5).
- *
- * @param str - The string to check.
- * @returns True if valid number.
- */
 export function isNumber(str: string): boolean {
-    return /^-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(str);
+    // Standard VASP number: optionally starts with "N*" repetition factor.
+    // e.g., 5*1.2, 10*0, -1.2e-5, .5
+    return /^(\d+\*)?-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(str);
 }
 
 /**

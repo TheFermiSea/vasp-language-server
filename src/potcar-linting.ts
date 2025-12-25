@@ -1,13 +1,14 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
 import { parsePotcar } from './potcar-parsing';
+import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
 
 /**
  * Validates POTCAR consistency with POSCAR.
  */
-export function validatePotcar(document: TextDocument): Diagnostic[] {
+export async function validatePotcar(document: TextDocument): Promise<Diagnostic[]> {
     const diagnostics: Diagnostic[] = [];
     const parsedPot = parsePotcar(document);
 
@@ -21,16 +22,25 @@ export function validatePotcar(document: TextDocument): Diagnostic[] {
     }
 
     // Attempt to find POSCAR in the same directory
-    // Handles file:/// and encoded spaces/chars
-    const fileUri = decodeURIComponent(document.uri);
-    const filePath = fileUri.replace(/^file:\/\/\/?/, '');
+    let filePath: string;
+    try {
+        filePath = fileURLToPath(document.uri);
+    } catch (e) {
+        // Fallback for non-standard URIs or if url module fails
+        filePath = decodeURIComponent(document.uri).replace(/^file:\/\/\/?/, '');
+        if (process.platform === 'win32' && !filePath.includes(':')) {
+            filePath = filePath.replace(/^\/*/, '');
+        } else if (process.platform !== 'win32' && !filePath.startsWith('/')) {
+            filePath = '/' + filePath;
+        }
+    }
+
     const dir = path.dirname(filePath);
-    // Try POSCAR
-    const poscarPath = path.join(process.platform === 'win32' ? '' : '/', dir, 'POSCAR');
+    const poscarPath = path.join(dir, 'POSCAR');
 
     if (fs.existsSync(poscarPath)) {
         try {
-            const poscarContent = fs.readFileSync(poscarPath, 'utf-8');
+            const poscarContent = await fs.promises.readFile(poscarPath, 'utf-8');
             const poscarElements = getPoscarElements(poscarContent);
 
             if (poscarElements.length === 0) {
