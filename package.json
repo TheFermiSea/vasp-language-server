@@ -1,0 +1,39 @@
+{
+  "name": "vasp-language-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@joplin/turndown-plugin-gfm": "^1.0.64",
+    "@types/cheerio": "^0.22.35",
+    "axios": "^1.13.2",
+    "cheerio": "^1.1.2",
+    "mathjax-full": "^3.2.1",
+    "mwn": "^3.0.1",
+    "turndown": "^7.2.2",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "vscode-languageserver-types": "^3.17.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/turndown": "^5.0.6",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3"
+  },
+  "bin": {
+    "vasp-lsp": "./bin/vasp-lsp"
+  }
+}
