@@ -1,0 +1,8 @@
+SYSTEM = Static Calculation
+ISTART = 0 ; ICHARG = 2
+ENCUT  = 520
+ISMEAR = -5
+LORBIT = 11
+LREAL  = .FALSE.
+ALGO   = Normal
+PREC   = Accurate

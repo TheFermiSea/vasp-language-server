@@ -1,0 +1,15 @@
+SYSTEM = Broken Relaxation
+# Electronic Relaxation
+ENCUT  = 400 eV  # Error: Should just be number
+EDIFF  = 1E-5
+ISMEAR = Gaussian # Error: ISMEAR is int (-1, 0, 1 etc)
+SIGMA  = 0.2
+
+# Ionic Relaxation
+IBRION = 2
+NSW    = 100
+EDIFFG = -0.01
+ISIF   = 3
+
+# Parallelization
+NCORE  = Four    # Error: Should be int
