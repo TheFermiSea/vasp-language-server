@@ -44,7 +44,8 @@ Stop checking `OUTCAR` for syntax errors. Catch them as you type.
 
 ### 🚀 INCAR (VASP 6.5.x)
 
-- **Robust Parsing**: Handles multi-line statements (`\`), inline comments (`#`, `!`), and semicolons (`;`).
+* **Robust Parsing**: Handles multi-line statements (`\`), inline comments (`#`, `!`), and semicolons (`;`).
+
 * **Strict Linting**: Validates over **50+ tags** against their expected types:
   * `ISMEAR` must be an `Integer`.
   * `ENCUT` must be a `Float`.
@@ -55,7 +56,8 @@ Stop checking `OUTCAR` for syntax errors. Catch them as you type.
 
 ### 📐 POSCAR
 
-- **Structural Integrity**: Validates the 3x3 lattice matrix.
+* **Structural Integrity**: Validates the 3x3 lattice matrix.
+
 * **Consistency Check**: Ensures the number of atom coordinates matches the species counts provided in the header.
 * **Format Support**: Handles VASP 5.x (explicit species) and VASP 4.x (implicit) formats.
 * **Selective Dynamics**: Validates `T`/`F` flags when selective dynamics is enabled.
@@ -95,7 +97,8 @@ For a deep dive into the internal design, see [docs/ARCHITECTURE.md](docs/ARCHIT
 
 ### Prerequisites
 
-- **Node.js** (v14 or higher)
+* **Node.js** (v14 or higher)
+
 * **npm**
 
 ### Quick Start (Source)
@@ -124,15 +127,25 @@ For a deep dive into the internal design, see [docs/ARCHITECTURE.md](docs/ARCHIT
 
 ## 🔌 Usage
 
-### Neovim (using `nvim-lspconfig`)
+### Running the Server
 
-Add this to your `init.lua`. This configuration assumes you have built the server locally.
+The server is designed to be run as a standalone process via standard input/output (stdio).
+
+```bash
+# Run manually (waits for JSON-RPC input)
+node /path/to/vasp-language-server/out/server.js --stdio
+```
+
+You can configure any LSP-capable editor to launch this command when opening `INCAR` or `POSCAR` files.
+
+### Client Configuration Examples
+
+#### Neovim (using `nvim-lspconfig`)
 
 ```lua
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
--- define custom config if not already present
 if not configs.vasp_lsp then
   configs.vasp_lsp = {
     default_config = {
@@ -146,23 +159,17 @@ end
 
 lspconfig.vasp_lsp.setup{
     on_attach = function(client, bufnr)
-        -- Keybindings for hover, etc.
-        local opts = { noremap=true, silent=true, buffer=bufnr }
-        vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
-        vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
+        -- Add keybindings here
     end
 }
 ```
 
-### VS Code
+#### VS Code, Emacs, Zed, etc
 
-Currently, this requires a generic LSP client extension (like "Run on Save" or "External LSP"):
-
-1. Install an extension that allows running external commands as LSP servers.
-2. Point it to: `node /path/to/vasp-language-server/out/server.js --stdio`
-3. Map file patterns `INCAR`, `POSCAR` to language ID `vasp`.
-
-**Dedicated VS Code extension coming soon.**
+Since this is a standard LSP server, it can be used with any generic LSP client wrapper.
+* **VS Code**: Use extensions like "External LSP" or "Run on Save" configured to execute the server command.
+* **Emacs**: Configure `lsp-mode` or `eglot` to register a new client for `vasp-mode`.
+* **Zed**: Add a custom language server configuration in settings.
 
 ---
 
