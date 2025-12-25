@@ -14,6 +14,8 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { validatePoscar } from './poscar-linting';
 import { validateIncar } from './incar-linting';
 import { validatePotcar } from './potcar-linting';
+import { parseKpoints } from './kpoints-parsing';
+import { validateKpoints } from './kpoints-linting';
 import { parseIncar } from './incar-parsing';
 import { VASP_TAGS } from './data/vasp-tags';
 import { logger } from './logger';
@@ -134,6 +136,16 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
             logger.error(`Error validating POTCAR: ${e}`);
         }
     }
+    else if (fileName.match(/KPOINTS/i)) {
+        try {
+            logger.info(`Validating KPOINTS: ${uri}`);
+            const parsed = parseKpoints(textDocument);
+            const kpointsDiagnostics = validateKpoints(parsed);
+            diagnostics.push(...kpointsDiagnostics);
+        } catch (e) {
+            logger.error(`Error validating KPOINTS: ${e}`);
+        }
+    }
 
     // Send the computed diagnostics to the client.
     // If 'diagnostics' is empty, this clears any previous errors for the file.
@@ -142,8 +154,28 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
 // Support for Completion
 connection.onCompletion((_textDocumentPosition: any): CompletionItem[] => {
-    // Generate completion items from VASP_TAGS
+    const uri = _textDocumentPosition.textDocument.uri;
     const items: CompletionItem[] = [];
+
+    // KPOINTS Snippets
+    if (uri.match(/KPOINTS/i)) {
+        items.push({
+            label: 'Monkhorst-Pack',
+            kind: CompletionItemKind.Snippet,
+            detail: 'Generate automatic Monkhorst-Pack grid',
+            insertText: 'Automatic Mesh\n0\nMonkhorst-Pack\n4 4 4\n0 0 0'
+        });
+        items.push({
+            label: 'Gamma-Centered',
+            kind: CompletionItemKind.Snippet,
+            detail: 'Generate automatic Gamma-centered grid',
+            insertText: 'Automatic Mesh\n0\nGamma\n4 4 4\n0 0 0'
+        });
+        return items;
+    }
+
+    // INCAR Completions (Default)
+    // Generate completion items from VASP_TAGS
     for (const [tag, def] of Object.entries(VASP_TAGS)) {
         items.push({
             label: tag,
