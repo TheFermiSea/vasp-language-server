@@ -17,6 +17,7 @@ import { validatePotcar } from './potcar-linting';
 import { parseKpoints } from './kpoints-parsing';
 import { validateKpoints } from './kpoints-linting';
 import { parseIncar } from './incar-parsing';
+import { formatIncar } from './incar-formatting';
 import { VASP_TAGS } from './data/vasp-tags';
 import { logger } from './logger';
 import { IncarTag } from './incar-tag';
@@ -71,7 +72,10 @@ connection.onInitialize((params: InitializeParams) => {
             completionProvider: {
                 resolveProvider: true,
                 triggerCharacters: ['=']
-            }
+            },
+
+            // Formatting support
+            documentFormattingProvider: true
         }
     };
     return result;
@@ -235,6 +239,18 @@ connection.onHover(({ textDocument, position }) => {
         }
     }
     return null;
+});
+
+// Support for Formatting
+connection.onDocumentFormatting((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) return [];
+
+    // Only format INCAR for now
+    if (document.uri.match(/INCAR/i)) {
+        return formatIncar(document);
+    }
+    return [];
 });
 
 // Make the text document manager listen on the connection
