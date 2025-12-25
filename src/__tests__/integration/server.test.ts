@@ -15,8 +15,13 @@ describe('LSP Server Integration', () => {
         });
     });
 
-    afterEach(() => {
-        server.kill();
+    afterEach(async () => {
+        if (!server.killed) {
+            server.stdin.end();
+            server.kill();
+            // Give it a moment to die to avoid race conditions with next test
+            await new Promise(r => setTimeout(r, 100));
+        }
     });
 
     function send(msg: any) {

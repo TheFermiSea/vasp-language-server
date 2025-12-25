@@ -8,7 +8,12 @@ import {
     InitializeResult,
     Diagnostic,
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    Hover,
+    CodeAction,
+    CodeActionKind,
+    TextEdit,
+    Command
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { validatePoscar } from './poscar-linting';
@@ -21,6 +26,9 @@ import { formatIncar } from './incar-formatting';
 import { VASP_TAGS } from './data/vasp-tags';
 import { logger } from './logger';
 import { IncarTag } from './incar-tag';
+import { levenshteinDistance } from './util';
+import { getIncarCodeActions } from './code-actions';
+import { getIncarSymbols, getPoscarSymbols } from './document-symbols';
 
 /**
  * Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -75,7 +83,13 @@ connection.onInitialize((params: InitializeParams) => {
             },
 
             // Formatting support
-            documentFormattingProvider: true
+            documentFormattingProvider: true,
+
+            // Code Action support (Quick Fixes)
+            codeActionProvider: true,
+
+            // Document Symbol support (Outline)
+            documentSymbolProvider: true
         }
     };
     return result;
@@ -251,6 +265,11 @@ connection.onDocumentFormatting((params) => {
         return formatIncar(document);
     }
     return [];
+});
+
+// Support for Code Actions
+connection.onCodeAction((params) => {
+    return getIncarCodeActions(params.textDocument.uri, params.context.diagnostics);
 });
 
 // Make the text document manager listen on the connection
