@@ -13,6 +13,7 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { validatePoscar } from './poscar-linting';
 import { validateIncar } from './incar-linting';
+import { validatePotcar } from './potcar-linting';
 import { parseIncar } from './incar-parsing';
 import { VASP_TAGS } from './data/vasp-tags';
 import { logger } from './logger';
@@ -122,6 +123,15 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
             diagnostics.push(...incarDiagnostics);
         } catch (e) {
             logger.error(`Error validating INCAR: ${e}`);
+        }
+    }
+    else if (fileName.match(/POTCAR/i)) {
+        try {
+            logger.info(`Validating POTCAR: ${uri}`);
+            const potcarDiagnostics = validatePotcar(textDocument);
+            diagnostics.push(...potcarDiagnostics);
+        } catch (e) {
+            logger.error(`Error validating POTCAR: ${e}`);
         }
     }
 

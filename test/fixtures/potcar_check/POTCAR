@@ -1,0 +1,6 @@
+   PAW_PBE O 08Apr2002
+      VRHFIN = O: s2p4
+   End of Potential
+   PAW_PBE Fe 06Sep2000
+      VRHFIN = Fe: d7s1
+   End of Potential
