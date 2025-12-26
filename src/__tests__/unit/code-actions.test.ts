@@ -1,5 +1,5 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
-import { getIncarCodeActions } from '../../code-actions';
+import { getIncarCodeActions } from '../../features/incar/code-actions';
 
 describe('Code Actions (Quick Fixes)', () => {
     const mockUri = 'file:///test/INCAR';

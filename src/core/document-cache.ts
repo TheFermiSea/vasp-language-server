@@ -1,22 +1,22 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { IncarDocument } from './incar-parsing';
-import { PoscarDocument } from './poscar-parsing';
-import { KpointsDocument } from './kpoints-parsing';
+import { IncarDocument } from '../features/incar/parsing';
+import { PoscarDocument } from '../features/poscar/parsing';
+import { KpointsDocument } from '../features/kpoints/parsing';
 
 /**
  * Union of all supported VASP document structures.
  */
 export type VaspStructure =
-    | { type: 'incar', data: IncarDocument }
-    | { type: 'poscar', data: PoscarDocument }
-    | { type: 'kpoints', data: KpointsDocument }
-    | { type: 'potcar', data: null };
+    | { type: 'incar'; data: IncarDocument }
+    | { type: 'poscar'; data: PoscarDocument }
+    | { type: 'kpoints'; data: KpointsDocument }
+    | { type: 'potcar'; data: null };
 
 /**
  * Caches parsed results (ASTs) for open documents.
  */
 export class DocumentCache {
-    private cache = new Map<string, { version: number, structure: VaspStructure }>();
+    private cache = new Map<string, { version: number; structure: VaspStructure }>();
     private order: string[] = [];
     private readonly MAX_SIZE = 50;
 

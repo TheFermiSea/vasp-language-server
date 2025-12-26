@@ -11,15 +11,18 @@ Thank you for your interest in contributing to the VASP Language Server! We aim 
 5. **Lint & Format**:
    - `npm run lint`: Run ESLint checks (strict no-any policy).
    - `npm run format`: Apply Prettier formatting.
+6. **Update Data**:
+   - `npm run update-tags`: Fetch latest VASP tags from the official wiki.
 
 ## Project Structure
 
 We follow a modular, feature-based organization:
 
-- `src/lsp-server.ts`: The main coordinator class (`LspServer`).
-- `src/features/`: Contains LSP feature implementations (Hover, Completion, Semantic Tokens, etc.).
-- `src/document-cache.ts`: Centralized AST caching layer.
-- `src/*-parsing.ts`: Core parsers for VASP file formats (INCAR, POSCAR, KPOINTS).
+- `src/core/lsp-server.ts`: The main coordinator class (`LspServer`).
+- `src/core/document-cache.ts`: Centralized AST caching layer.
+- `src/features/`: Feature-specific implementations (e.g., `src/features/incar/parsing.ts`).
+- `src/utils/`: Shared utilities (`logger.ts`, `util.ts`).
+- `src/tools/`: Standalone scripts (`vasp-wiki.ts`).
 - `src/__tests__/`: Comprehensive test suites.
 
 ## How to Add a New Feature

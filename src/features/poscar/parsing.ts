@@ -1,6 +1,6 @@
 import { Range } from 'vscode-languageserver-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { countUntil, isNumber, isInteger, isLetters } from './util';
+import { countUntil, isNumber, isInteger, isLetters } from '../../utils/util';
 
 /**
  * Enumeration of all possible token types in a POSCAR file.

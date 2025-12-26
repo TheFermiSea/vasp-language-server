@@ -1,6 +1,6 @@
 import { CodeAction, CodeActionKind, Diagnostic, TextEdit } from 'vscode-languageserver/node';
-import { VASP_TAGS } from './data/vasp-tags';
-import { levenshteinDistance } from './util';
+import { VASP_TAGS } from '../../data/vasp-tags';
+import { levenshteinDistance } from '../../utils/util';
 
 /**
  * Generates Code Actions (Quick Fixes) for INCAR diagnostics.

@@ -1,5 +1,5 @@
-import { parseKpoints } from '../../kpoints-parsing';
-import { validateKpoints } from '../../kpoints-linting';
+import { parseKpoints } from '../../features/kpoints/parsing';
+import { validateKpoints } from '../../features/kpoints/linting';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 describe('KPOINTS Parser', () => {

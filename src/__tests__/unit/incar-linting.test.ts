@@ -1,5 +1,5 @@
-import { validateIncar } from '../../incar-linting';
-import { parseIncar } from '../../incar-parsing';
+import { validateIncar } from '../../features/incar/linting';
+import { parseIncar } from '../../features/incar/parsing';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { DiagnosticSeverity } from 'vscode-languageserver-types';
 

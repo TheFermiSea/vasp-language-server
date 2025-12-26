@@ -1,7 +1,7 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
-import { IncarDocument, IncarStatement } from './incar-parsing';
-import { VASP_TAGS, TagDefinition } from './data/vasp-tags';
-import { isNumber, isInteger } from './util';
+import { IncarDocument, IncarStatement } from './parsing';
+import { VASP_TAGS, TagDefinition } from '../../data/vasp-tags';
+import { isNumber, isInteger } from '../../utils/util';
 
 /**
  * Validates a parsed INCAR document.

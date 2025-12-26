@@ -1,4 +1,5 @@
 import TurndownService from 'turndown';
+// @ts-ignore
 import { gfm } from '@joplin/turndown-plugin-gfm';
 import { MathConverter } from './math-converter';
 

@@ -1,6 +1,7 @@
 import { SymbolKind } from 'vscode-languageserver-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getIncarSymbols, getPoscarSymbols } from '../../document-symbols';
+import { getIncarSymbols } from '../../features/incar/symbols';
+import { getPoscarSymbols } from '../../features/poscar/symbols';
 
 function createDoc(content: string, uri = 'file:///INCAR'): TextDocument {
     return TextDocument.create(uri, 'plaintext', 1, content);

@@ -1,9 +1,8 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { validateIncar } from '../../incar-linting';
-import { parseIncar } from '../../incar-parsing';
+import { validateIncar } from '../../features/incar/linting';
+import { parseIncar } from '../../features/incar/parsing';
 
 describe('VASP Documentation Cross-Validation (Expert Mode)', () => {
-
     test('validates Hybrid Functional (HSE) tags (VASP 6.4.3+)', () => {
         const text = `
 SYSTEM = HSE functional
@@ -17,7 +16,7 @@ XC = HSE06
         const diagnostics = validateIncar(parsed);
 
         // Should have zero diagnostics for valid HSE setup
-        expect(diagnostics.filter(d => d.severity === 1)).toHaveLength(0);
+        expect(diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
     });
 
     test('validates LDA+U (Hubbard) array syntax', () => {
@@ -33,7 +32,7 @@ LDAUJ = 0.0 0.0
         const parsed = parseIncar(doc);
         const diagnostics = validateIncar(parsed);
 
-        expect(diagnostics.filter(d => d.severity === 1)).toHaveLength(0);
+        expect(diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
     });
 
     test('handles VASP repetition notation (N*val)', () => {
@@ -46,7 +45,7 @@ ENCUT = 10*500
         const diagnostics = validateIncar(parsed);
 
         // 10*0.0 is valid for array, but 10*500 is technically valid as VASP parses first item
-        expect(diagnostics.filter(d => d.severity === 1)).toHaveLength(0);
+        expect(diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
     });
 
     test('validates van der Waals (IVDW) settings', () => {
@@ -59,11 +58,11 @@ LVDW_EWALD = .TRUE.
         const diagnostics = validateIncar(parsed);
 
         // LVDW_EWALD is a valid sub-tag (though not in my common list yet, it should warn if unknown)
-        const unknownTags = diagnostics.filter(d => d.message.includes('Unknown tag'));
-        expect(unknownTags.some(d => d.message.includes('LVDW_EWALD'))).toBe(true);
+        const unknownTags = diagnostics.filter((d) => d.message.includes('Unknown tag'));
+        expect(unknownTags.some((d) => d.message.includes('LVDW_EWALD'))).toBe(true);
 
         // IVDW = 11 should be valid
-        const ivdwErrors = diagnostics.filter(d => d.message.includes('IVDW'));
+        const ivdwErrors = diagnostics.filter((d) => d.message.includes('IVDW'));
         expect(ivdwErrors).toHaveLength(0);
     });
 
@@ -75,7 +74,7 @@ POTIM = 0.5
         const doc = TextDocument.create('file:///INCAR', 'vasp', 1, text);
         const parsed = parseIncar(doc);
         const diagnostics = validateIncar(parsed);
-        expect(diagnostics.filter(d => d.severity === 1)).toHaveLength(0);
+        expect(diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
     });
 
     test('handles leading and trailing dots for floats', () => {
@@ -86,14 +85,13 @@ SIGMA = .05
         const doc = TextDocument.create('file:///INCAR', 'vasp', 1, text);
         const parsed = parseIncar(doc);
         const diagnostics = validateIncar(parsed);
-        expect(diagnostics.filter(d => d.severity === 1)).toHaveLength(0);
+        expect(diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
     });
 });
 
-import { parseKpoints } from '../../kpoints-parsing';
+import { parseKpoints } from '../../features/kpoints/parsing';
 
 describe('VASP Documentation KPOINTS Validation', () => {
-
     test('validates Automatic length-based KPOINTS (Mode A)', () => {
         const text = `Automatic mesh
 0
@@ -102,7 +100,7 @@ Auto
 `;
         const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, text);
         const parsed = parseKpoints(doc);
-        expect(parsed.diagnostics.filter(d => d.severity === 1)).toHaveLength(0);
+        expect(parsed.diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
     });
 
     test('validates Monkhorst-Pack grid (Mode M)', () => {
@@ -114,7 +112,7 @@ Monkhorst-Pack
 `;
         const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, text);
         const parsed = parseKpoints(doc);
-        expect(parsed.diagnostics.filter(d => d.severity === 1)).toHaveLength(0);
+        expect(parsed.diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
         expect(parsed.grid).toEqual([4, 4, 4]);
     });
 
@@ -126,7 +124,7 @@ Gamma
 `;
         const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, text);
         const parsed = parseKpoints(doc);
-        expect(parsed.diagnostics.some(d => d.message.includes('Grid values must be integers'))).toBe(true);
+        expect(parsed.diagnostics.some((d) => d.message.includes('Grid values must be integers'))).toBe(true);
     });
 
     test('fails on invalid auto length', () => {
@@ -137,6 +135,6 @@ Automatic
 `;
         const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, text);
         const parsed = parseKpoints(doc);
-        expect(parsed.diagnostics.some(d => d.message.includes('positive number'))).toBe(true);
+        expect(parsed.diagnostics.some((d) => d.message.includes('positive number'))).toBe(true);
     });
 });

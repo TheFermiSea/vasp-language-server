@@ -1,4 +1,4 @@
-import { formatIncar } from '../../incar-formatting';
+import { formatIncar } from '../../features/incar/formatting';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 describe('INCAR Formatter', () => {

@@ -1,4 +1,4 @@
-import { DocumentCache } from '../../document-cache';
+import { DocumentCache } from '../../core/document-cache';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 describe('DocumentCache', () => {

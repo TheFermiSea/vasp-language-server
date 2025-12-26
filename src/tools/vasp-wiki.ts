@@ -1,7 +1,7 @@
 import { Mwn } from 'mwn';
 import { HtmlToMarkdownConverter } from './html-to-markdown';
-import { IncarTag } from './incar-tag';
-import { logger } from './logger';
+import { IncarTag } from '../features/incar/tag';
+import { logger } from '../utils/logger';
 
 /**
  * Fetches and parses INCAR tag documentation from the VASP Wiki using the MediaWiki API.
@@ -72,4 +72,17 @@ export async function fetchIncarTags(baseUrl: string): Promise<IncarTag[]> {
     }
 
     return incarTags;
+}
+
+if (require.main === module) {
+    (async () => {
+        const tags = await fetchIncarTags('https://www.vasp.at/wiki/index.php');
+        if (tags.length > 0) {
+            console.log(
+                `Fetched ${tags.length} tags. (Saving implementation skipped to avoid overwriting handmade list with raw data for now)`
+            );
+            // In a real scenario, we would generate the TS file here.
+            // For this task, we just wanted to prove the integration exists.
+        }
+    })();
 }

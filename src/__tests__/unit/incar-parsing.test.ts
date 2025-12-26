@@ -1,4 +1,4 @@
-import { parseIncar } from '../../incar-parsing';
+import { parseIncar } from '../../features/incar/parsing';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 describe('INCAR Parser', () => {

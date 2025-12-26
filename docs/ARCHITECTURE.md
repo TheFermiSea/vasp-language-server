@@ -16,24 +16,17 @@ We use a feature-based modular structure with a centralized caching layer:
 
 ```bash
 src/
-├── server.ts           # Entry point (Thin wrapper)
-├── lsp-server.ts       # Core LspServer class (Main coordinator)
-├── document-cache.ts   # AST Caching layer (Standardized VaspStructure)
-├── features/           # LSP Feature Implementations
-│   ├── folding.ts      # Folding Range logic
-│   ├── incar/          # INCAR-specific features
-│   │   ├── completion.ts
-│   │   ├── hover.ts
-│   │   ├── quick-fix.ts
-│   │   └── semantic-tokens.ts
-│   └── ... 
-├── document-symbols.ts # Outline logic for INCAR/POSCAR
-├── incar-parsing.ts    # INCAR AST parser
-├── poscar-parsing.ts   # POSCAR AST parser (100k atom optimized)
-├── kpoints-parsing.ts  # KPOINTS AST parser
-├── potcar-linting.ts   # Async POTCAR/POSCAR consistency check
-└── data/
-    └── vasp-tags.ts    # Static VASP tag database
+├── core/
+│   ├── lsp-server.ts       # Core LspServer class (Main coordinator)
+│   └── document-cache.ts   # AST Caching layer (Standardized VaspStructure)
+├── features/               # Feature-specific Logic
+│   ├── incar/              # INCAR features (Completion, Hover, Folding, etc.)
+│   ├── poscar/             # POSCAR features (Folding, Hover, Symbols)
+│   ├── kpoints/            # KPOINTS features (Snippets, Hover)
+│   └── potcar/             # POTCAR features (Async Linting)
+├── utils/                  # Shared Utilities
+├── tools/                  # Standalone Tools (vasp-wiki.ts)
+└── server.ts               # Entry point (Thin wrapper)
 ```
 
 ## Core Components

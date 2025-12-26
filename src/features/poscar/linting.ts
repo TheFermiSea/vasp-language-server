@@ -1,8 +1,8 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { isNumber, isInteger, isLetters } from './util';
-import { parsePoscar, PoscarBlockType, PoscarLine, PoscarDocument } from './poscar-parsing';
-import { countUntil } from './util';
+import { isNumber, isInteger, isLetters } from '../../utils/util';
+import { parsePoscar, PoscarBlockType, PoscarLine, PoscarDocument } from './parsing';
+import { countUntil } from '../../utils/util';
 
 /**
  * Main validation function for POSCAR files.
@@ -103,7 +103,9 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
         // Validate that all species names are just letters
         const diagnostics = poscarLine.tokens
             .filter((t: any) => !isLetters(t.text))
-            .map((t: any) => createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error));
+            .map((t: any) =>
+                createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error)
+            );
         isEmptyLine(poscarLine, diagnostics);
         return diagnostics;
     },
@@ -250,7 +252,7 @@ function countUntilComment(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): 
         diagnostics.push(
             createDiagnostic(
                 'The remainder of this line is ignored by VASP. ' +
-                "Consider placing a '#' or '!' in front to make the intention clearer.",
+                    "Consider placing a '#' or '!' in front to make the intention clearer.",
                 range,
                 DiagnosticSeverity.Warning
             )

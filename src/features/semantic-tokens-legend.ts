@@ -41,6 +41,14 @@ export const semanticTokensLegend = {
     tokenModifiers
 };
 
+// Create Maps for fast lookups
+export const tokenTypeIndices = new Map<string, number>();
+tokenTypes.forEach((t, i) => tokenTypeIndices.set(t, i));
+
+export const tokenModifierIndices = new Map<string, number>();
+tokenModifiers.forEach((m, i) => tokenModifierIndices.set(m, i));
+
+// Compatibility Enums (Indices)
 export enum TokenType {
     namespace = 0,
     type = 1,

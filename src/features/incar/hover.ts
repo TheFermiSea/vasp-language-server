@@ -1,6 +1,6 @@
 import { Hover, Position } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { parseIncar } from '../../incar-parsing';
+import { parseIncar } from './parsing';
 import { VASP_TAGS } from '../../data/vasp-tags';
 
 export function getIncarHover(document: TextDocument, position: Position): Hover | null {

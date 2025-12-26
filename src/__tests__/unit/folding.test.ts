@@ -1,4 +1,4 @@
-import { getFoldingRanges } from '../../features/folding';
+import { getFoldingRanges } from '../../features/poscar/folding';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 describe('Folding Ranges', () => {
@@ -18,7 +18,7 @@ describe('Folding Ranges', () => {
         ].join('\n');
 
         const document = TextDocument.create('file:///test/POSCAR', 'vasp', 1, content);
-        const ranges = getFoldingRanges(document);
+        const ranges = getFoldingRanges(document.getText().split(/\r?\n/));
 
         // Expect 2 ranges: Lattice (2-4) and Coords (8-9)
         expect(ranges.length).toBeGreaterThanOrEqual(2);
@@ -35,13 +35,13 @@ describe('Folding Ranges', () => {
     it('should handle small POSCARs gracefully', () => {
         const content = 'Title\n1.0\n';
         const document = TextDocument.create('file:///test/POSCAR', 'vasp', 1, content);
-        const ranges = getFoldingRanges(document);
+        const ranges = getFoldingRanges(document.getText().split(/\r?\n/));
         expect(ranges).toHaveLength(0);
     });
 
     it('should return empty for unknown file types', () => {
         const document = TextDocument.create('file:///test/UNKNOWN', 'vasp', 1, 'content');
-        const ranges = getFoldingRanges(document);
+        const ranges = getFoldingRanges(document.getText().split(/\r?\n/));
         expect(ranges).toHaveLength(0);
     });
 });

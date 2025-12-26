@@ -1,22 +1,7 @@
 import { FoldingRange, FoldingRangeKind } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { PoscarLine } from '../poscar-parsing';
+import { PoscarLine } from './parsing';
 
-export function getFoldingRanges(document: TextDocument, poscarData?: PoscarLine[]): FoldingRange[] {
-    const text = document.getText();
-    const lines = text.split(/\r?\n/);
-    const ranges: FoldingRange[] = [];
-
-    if (document.uri.match(/POSCAR/i) || document.uri.match(/CONTCAR/i)) {
-        return getPoscarFoldingRanges(lines, poscarData);
-    } else if (document.uri.match(/INCAR/i)) {
-        return getIncarFoldingRanges(lines);
-    }
-
-    return ranges;
-}
-
-function getPoscarFoldingRanges(lines: string[], poscarData?: PoscarLine[]): FoldingRange[] {
+export function getFoldingRanges(lines: string[], poscarData?: PoscarLine[]): FoldingRange[] {
     const ranges: FoldingRange[] = [];
     if (lines.length < 5) return ranges;
 
@@ -33,7 +18,7 @@ function getPoscarFoldingRanges(lines: string[], poscarData?: PoscarLine[]): Fol
     let currentLine = 5;
 
     if (poscarData) {
-        const firstPos = poscarData.find(l => l.type === 'positions' || l.type === 'positionsSelDyn');
+        const firstPos = poscarData.find((l) => l.type === 'positions' || l.type === 'positionsSelDyn');
         if (firstPos) {
             currentLine = firstPos.line.lineNumber;
         }
@@ -70,11 +55,5 @@ function getPoscarFoldingRanges(lines: string[], poscarData?: PoscarLine[]): Fol
         });
     }
 
-    return ranges;
-}
-
-function getIncarFoldingRanges(_lines: string[]): FoldingRange[] {
-    const ranges: FoldingRange[] = [];
-    // future: fold contiguous comment blocks?
     return ranges;
 }

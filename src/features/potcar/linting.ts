@@ -1,6 +1,6 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
-import { parsePotcar } from './potcar-parsing';
+import { parsePotcar } from './parsing';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as path from 'path';

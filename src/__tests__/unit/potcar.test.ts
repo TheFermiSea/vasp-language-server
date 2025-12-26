@@ -1,5 +1,5 @@
-import { parsePotcar } from '../../potcar-parsing';
-import { validatePotcar } from '../../potcar-linting';
+import { parsePotcar } from '../../features/potcar/parsing';
+import { validatePotcar } from '../../features/potcar/linting';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { DiagnosticSeverity } from 'vscode-languageserver-types';
 import * as fs from 'fs';

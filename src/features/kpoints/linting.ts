@@ -1,4 +1,4 @@
-import { KpointsDocument } from './kpoints-parsing';
+import { KpointsDocument } from './parsing';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
 
 export function validateKpoints(data: KpointsDocument): Diagnostic[] {

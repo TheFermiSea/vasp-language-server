@@ -40,12 +40,12 @@ require'lspconfig'.vasp_ls.setup{
 | Feature | INCAR | POSCAR | POTCAR | KPOINTS |
 | :--- | :---: | :---: | :---: | :---: |
 | **Strict Validation** | ✅ | ✅ | ✅ | ✅ |
-| **Hover Documentation** | ✅ | - | - | - |
-| **Autocomplete** | ✅ | - | - | - |
+| **Hover Documentation** | ✅ | ✅ | - | ✅ |
+| **Autocomplete** | ✅ | - | - | ✅ |
 | **Quick Fixes** | ✅ | - | - | - |
 | **Symbol Outline** | ✅ | ✅ | - | - |
-| **Semantic Tokens** | ✅ | - | - | - |
-| **Folding** | - | ✅ | - | - |
+| **Semantic Tokens** | ✅ | ✅ | - | ✅ |
+| **Folding** | ✅ | ✅ | - | - |
 
 ### Advanced VASP Support <sup>(New in v1.0.1)</sup>
 

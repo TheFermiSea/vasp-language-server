@@ -1,6 +1,6 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getIncarSemanticTokens } from '../../features/incar/semantic-tokens';
-import { parseIncar } from '../../incar-parsing';
+import { parseIncar } from '../../features/incar/parsing';
 import { TokenType, TokenModifier } from '../../features/semantic-tokens-legend';
 
 describe('INCAR Semantic Tokens', () => {

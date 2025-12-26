@@ -1,12 +1,12 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { parsePoscar } from '../../poscar-parsing';
-import { parseIncar } from '../../incar-parsing';
-import { parseKpoints } from '../../kpoints-parsing';
+import { parsePoscar } from '../../features/poscar/parsing';
+import { parseIncar } from '../../features/incar/parsing';
+import { parseKpoints } from '../../features/kpoints/parsing';
 
 describe('Fuzzing-lite (Robustness Tests)', () => {
-
     function generateRandomGarbage(length: number): string {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \n\t!@#$%^&*()_+-=[]{}|;:,.<>?/\\';
+        const chars =
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \n\t!@#$%^&*()_+-=[]{}|;:,.<>?/\\';
         let result = '';
         for (let i = 0; i < length; i++) {
             result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -44,5 +44,4 @@ describe('Fuzzing-lite (Robustness Tests)', () => {
         expect(() => parsePoscar(doc)).not.toThrow();
         expect(() => parseKpoints(doc)).not.toThrow();
     });
-
 });
