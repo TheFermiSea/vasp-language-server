@@ -1,6 +1,6 @@
 import { SemanticTokensBuilder, SemanticTokens } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { parseIncar, IncarDocument } from './parsing';
+import { IncarDocument } from './parsing';
 import { TokenType, TokenModifier } from '../semantic-tokens-legend';
 import { isNumber } from '../../utils/util';
 

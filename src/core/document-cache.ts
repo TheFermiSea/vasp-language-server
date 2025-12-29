@@ -2,15 +2,21 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { IncarDocument } from '../features/incar/parsing';
 import { PoscarDocument } from '../features/poscar/parsing';
 import { KpointsDocument } from '../features/kpoints/parsing';
+import { CrystalDocument } from '../features/crystal/parsing';
 
 /**
- * Union of all supported VASP document structures.
+ * Union of all supported DFT document structures.
+ * Supports VASP (INCAR, POSCAR, KPOINTS, POTCAR) and CRYSTAL23 (.d12)
  */
-export type VaspStructure =
+export type DFTStructure =
     | { type: 'incar'; data: IncarDocument }
     | { type: 'poscar'; data: PoscarDocument }
     | { type: 'kpoints'; data: KpointsDocument }
-    | { type: 'potcar'; data: null };
+    | { type: 'potcar'; data: null }
+    | { type: 'crystal'; data: CrystalDocument };
+
+// Backwards compatibility alias
+export type VaspStructure = DFTStructure;
 
 /**
  * Caches parsed results (ASTs) for open documents.

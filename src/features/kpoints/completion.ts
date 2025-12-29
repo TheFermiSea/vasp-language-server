@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind, Position, InsertTextFormat } from 'vscode-languageserver/node';
+import { CompletionItem, CompletionItemKind, Position } from 'vscode-languageserver/node';
 
 export function getKpointsCompletions(text: string, position: Position): CompletionItem[] {
     // Only provide completions for the 3rd line (Index 2), which is the Mode.

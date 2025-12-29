@@ -23,31 +23,31 @@ Direct
         it('should hover identifying comment line', () => {
             const result = getPoscarHover(parsed, Position.create(0, 0));
             expect(result).not.toBeNull();
-            // @ts-expect-error - value property is in MarkdownString
+            // @ts-expect-error - MarkupContent has value property
             expect(result?.contents.value).toContain('**POSCAR Title / Comment**');
         });
 
         it('should hover scaling factor', () => {
             const result = getPoscarHover(parsed, Position.create(1, 0));
-            // @ts-expect-error
+            // @ts-expect-error - MarkupContent has value property
             expect(result?.contents.value).toContain('**Universal Scaling Factor**');
         });
 
         it('should hover lattice vectors', () => {
             const result = getPoscarHover(parsed, Position.create(3, 0));
-            // @ts-expect-error
+            // @ts-expect-error - MarkupContent has value property
             expect(result?.contents.value).toContain('**Lattice Vector**');
         });
 
         it('should hover species names', () => {
             const result = getPoscarHover(parsed, Position.create(5, 0));
-            // @ts-expect-error
+            // @ts-expect-error - MarkupContent has value property
             expect(result?.contents.value).toContain('**Species Names**');
         });
 
         it('should hover positions', () => {
             const result = getPoscarHover(parsed, Position.create(8, 0));
-            // @ts-expect-error
+            // @ts-expect-error - MarkupContent has value property
             expect(result?.contents.value).toContain('**Atomic Position**');
         });
     });

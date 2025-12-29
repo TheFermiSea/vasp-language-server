@@ -1,5 +1,5 @@
-import { SemanticTokensBuilder, SemanticTokensLegend } from 'vscode-languageserver/node';
-import { PoscarDocument, PoscarBlockType } from './parsing';
+import { SemanticTokensBuilder } from 'vscode-languageserver/node';
+import { PoscarDocument } from './parsing';
 import { tokenTypeIndices, tokenModifierIndices } from '../semantic-tokens-legend';
 
 export function getPoscarSemanticTokens(parsed: PoscarDocument): { data: number[] } {

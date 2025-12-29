@@ -1,5 +1,5 @@
 import TurndownService from 'turndown';
-// @ts-ignore
+// @ts-expect-error - gfm module lacks type declarations
 import { gfm } from '@joplin/turndown-plugin-gfm';
 import { MathConverter } from './math-converter';
 

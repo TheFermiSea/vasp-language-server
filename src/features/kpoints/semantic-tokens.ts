@@ -10,8 +10,6 @@ export function getKpointsSemanticTokens(text: string): { data: number[] } {
         const words = lineText.match(/(\S+)/g);
         if (!words) return;
 
-        let currentOffset = 0;
-
         // Find positions of words
         // Note: regex match doesn't give indices easily in loop, so we re-scan
         const wordMatches = lineText.matchAll(/(\S+)/g);

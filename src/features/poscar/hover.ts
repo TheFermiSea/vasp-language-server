@@ -1,5 +1,5 @@
 import { Hover, MarkupKind, Position } from 'vscode-languageserver/node';
-import { PoscarDocument, PoscarBlockType } from './parsing';
+import { PoscarDocument } from './parsing';
 
 export function getPoscarHover(parsed: PoscarDocument, position: Position): Hover | null {
     // Find the line corresponding to the hover position

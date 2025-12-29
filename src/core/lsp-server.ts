@@ -17,9 +17,8 @@ import {
     FoldingRangeParams
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import * as path from 'path';
 
-// Features
+// VASP Features
 import { validatePoscar } from '../features/poscar/linting';
 import { validateIncar } from '../features/incar/linting';
 import { validatePotcar } from '../features/potcar/linting';
@@ -42,6 +41,13 @@ import { getKpointsSemanticTokens } from '../features/kpoints/semantic-tokens';
 import { semanticTokensLegend } from '../features/semantic-tokens-legend';
 import { getFoldingRanges } from '../features/poscar/folding';
 import { getIncarFoldingRanges } from '../features/incar/folding';
+
+// CRYSTAL23 Features
+import { parseCrystal } from '../features/crystal/parsing';
+import { validateCrystal } from '../features/crystal/linting';
+import { getCrystalCompletions, resolveCrystalCompletion } from '../features/crystal/completion';
+import { getCrystalHover } from '../features/crystal/hover';
+import { getCrystalSemanticTokens } from '../features/crystal/semantic-tokens';
 
 // Core & Utils
 import { logger } from '../utils/logger';
@@ -94,7 +100,7 @@ export class LspServer {
     }
 
     private onInitialize(_params: InitializeParams): InitializeResult {
-        logger.info('Initializing VASP Language Server (Modular)...');
+        logger.info('Initializing DFT Language Server (VASP + CRYSTAL23)...');
         return {
             capabilities: {
                 textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -116,38 +122,74 @@ export class LspServer {
     }
 
     private onInitialized(): void {
-        logger.info('VASP Language Server Initialized.');
+        logger.info('DFT Language Server Initialized (VASP + CRYSTAL23).');
+    }
+
+    /**
+     * Determine the file type from the document URI
+     */
+    private getFileType(uri: string): 'incar' | 'poscar' | 'kpoints' | 'potcar' | 'crystal' | 'unknown' {
+        const fileName = uri.split('/').pop() || '';
+        const upper = fileName.toUpperCase();
+
+        // CRYSTAL23 .d12 files
+        if (fileName.endsWith('.d12') || fileName.endsWith('.D12')) {
+            return 'crystal';
+        }
+
+        // VASP files
+        if (upper.includes('INCAR')) return 'incar';
+        if (upper.includes('POSCAR') || upper.includes('CONTCAR')) return 'poscar';
+        if (upper.includes('KPOINTS')) return 'kpoints';
+        if (upper.includes('POTCAR')) return 'potcar';
+
+        return 'unknown';
     }
 
     private async validateTextDocument(textDocument: TextDocument): Promise<void> {
         const uri = textDocument.uri;
         const diagnostics: Diagnostic[] = [];
-        const fileName = uri.split('/').pop() || '';
+        const fileType = this.getFileType(uri);
 
         try {
             let structure: VaspStructure | undefined;
 
-            if (fileName.match(/POSCAR/i) || fileName.match(/CONTCAR/i)) {
-                const parsed = parsePoscar(textDocument);
-                structure = { type: 'poscar', data: parsed };
-                diagnostics.push(...validatePoscar(textDocument));
-            } else if (fileName.match(/INCAR/i)) {
-                const parsed = parseIncar(textDocument);
-                structure = { type: 'incar', data: parsed };
-                diagnostics.push(...validateIncar(parsed));
-            } else if (fileName.match(/POTCAR/i)) {
-                diagnostics.push(...(await validatePotcar(textDocument)));
-            } else if (fileName.match(/KPOINTS/i)) {
-                const parsed = parseKpoints(textDocument);
-                structure = { type: 'kpoints', data: parsed };
-                diagnostics.push(...validateKpoints(parsed));
+            switch (fileType) {
+                case 'crystal': {
+                    const parsed = parseCrystal(textDocument);
+                    structure = { type: 'crystal', data: parsed };
+                    diagnostics.push(...validateCrystal(parsed));
+                    break;
+                }
+                case 'poscar': {
+                    const parsed = parsePoscar(textDocument);
+                    structure = { type: 'poscar', data: parsed };
+                    diagnostics.push(...validatePoscar(textDocument, parsed));
+                    break;
+                }
+                case 'incar': {
+                    const parsed = parseIncar(textDocument);
+                    structure = { type: 'incar', data: parsed };
+                    diagnostics.push(...validateIncar(parsed));
+                    break;
+                }
+                case 'potcar': {
+                    diagnostics.push(...(await validatePotcar(textDocument)));
+                    break;
+                }
+                case 'kpoints': {
+                    const parsed = parseKpoints(textDocument);
+                    structure = { type: 'kpoints', data: parsed };
+                    diagnostics.push(...validateKpoints(parsed));
+                    break;
+                }
             }
 
             if (structure) {
                 this.cache.set(textDocument, structure);
             }
         } catch (e) {
-            logger.error(`Error validating ${fileName}: ${e} `);
+            logger.error(`Error validating ${fileType} file: ${e}`);
         }
 
         this.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
@@ -158,13 +200,17 @@ export class LspServer {
             const document = this.documents.get(_params.textDocument.uri);
             if (!document) return [];
 
-            const basename = path.basename(document.uri).toUpperCase();
-            if (basename.includes('INCAR')) {
-                return getIncarCompletions();
-            } else if (basename.includes('KPOINTS')) {
-                return getKpointsCompletions(document.getText(), _params.position);
+            const fileType = this.getFileType(document.uri);
+            switch (fileType) {
+                case 'crystal':
+                    return getCrystalCompletions();
+                case 'incar':
+                    return getIncarCompletions();
+                case 'kpoints':
+                    return getKpointsCompletions(document.getText(), _params.position);
+                default:
+                    return [];
             }
-            return [];
         } catch (e) {
             logger.error(`Completion failed: ${e}`);
             return [];
@@ -173,9 +219,15 @@ export class LspServer {
 
     private onCompletionResolve(item: CompletionItem): CompletionItem {
         try {
+            // Try CRYSTAL23 resolution first (check if it's a CRYSTAL keyword)
+            const crystalResolved = resolveCrystalCompletion(item);
+            if (crystalResolved.documentation) {
+                return crystalResolved;
+            }
+            // Fall back to INCAR resolution
             return resolveIncarCompletion(item);
         } catch (e) {
-            logger.error(`Error in onCompletionResolve: ${e} `);
+            logger.error(`Error in onCompletionResolve: ${e}`);
             return item;
         }
     }
@@ -185,20 +237,29 @@ export class LspServer {
             const document = this.documents.get(params.textDocument.uri);
             if (!document) return null;
 
-            const basename = path.basename(document.uri).toUpperCase();
-            if (basename.includes('INCAR')) {
-                return getIncarHover(document, params.position);
-            } else if (basename.includes('POSCAR') || basename.includes('CONTCAR')) {
-                const cached = this.cache.get(document);
-                if (cached?.type === 'poscar') {
-                    return getPoscarHover(cached.data, params.position);
-                } else {
+            const fileType = this.getFileType(document.uri);
+            switch (fileType) {
+                case 'crystal': {
+                    const cached = this.cache.get(document);
+                    if (cached?.type === 'crystal') {
+                        return getCrystalHover(document, cached.data, params.position);
+                    }
+                    return getCrystalHover(document, parseCrystal(document), params.position);
+                }
+                case 'incar':
+                    return getIncarHover(document, params.position);
+                case 'poscar': {
+                    const cached = this.cache.get(document);
+                    if (cached?.type === 'poscar') {
+                        return getPoscarHover(cached.data, params.position);
+                    }
                     return getPoscarHover(parsePoscar(document), params.position);
                 }
-            } else if (basename.includes('KPOINTS')) {
-                return getKpointsHover(document.getText(), params.position);
+                case 'kpoints':
+                    return getKpointsHover(document.getText(), params.position);
+                default:
+                    return null;
             }
-            return null;
         } catch (e) {
             logger.error(`Hover failed: ${e}`);
             return null;
@@ -231,19 +292,28 @@ export class LspServer {
             const document = this.documents.get(params.textDocument.uri);
             if (!document) return { data: [] };
 
-            const basename = path.basename(document.uri).toUpperCase();
-            if (basename.includes('INCAR')) {
-                const cached = this.cache.get(document);
-                if (cached?.type === 'incar') return getIncarSemanticTokens(document, cached.data);
-                return getIncarSemanticTokens(document, parseIncar(document));
-            } else if (basename.includes('POSCAR') || basename.includes('CONTCAR')) {
-                const cached = this.cache.get(document);
-                if (cached?.type === 'poscar') return getPoscarSemanticTokens(cached.data);
-                return getPoscarSemanticTokens(parsePoscar(document));
-            } else if (basename.includes('KPOINTS')) {
-                return getKpointsSemanticTokens(document.getText());
+            const fileType = this.getFileType(document.uri);
+            switch (fileType) {
+                case 'crystal': {
+                    const cached = this.cache.get(document);
+                    if (cached?.type === 'crystal') return getCrystalSemanticTokens(cached.data);
+                    return getCrystalSemanticTokens(parseCrystal(document));
+                }
+                case 'incar': {
+                    const cached = this.cache.get(document);
+                    if (cached?.type === 'incar') return getIncarSemanticTokens(document, cached.data);
+                    return getIncarSemanticTokens(document, parseIncar(document));
+                }
+                case 'poscar': {
+                    const cached = this.cache.get(document);
+                    if (cached?.type === 'poscar') return getPoscarSemanticTokens(cached.data);
+                    return getPoscarSemanticTokens(parsePoscar(document));
+                }
+                case 'kpoints':
+                    return getKpointsSemanticTokens(document.getText());
+                default:
+                    return { data: [] };
             }
-            return { data: [] };
         } catch (e) {
             logger.error(`SemanticTokens failed: ${e}`);
             return { data: [] };

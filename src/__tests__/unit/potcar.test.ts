@@ -1,7 +1,6 @@
 import { parsePotcar } from '../../features/potcar/parsing';
 import { validatePotcar } from '../../features/potcar/linting';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { DiagnosticSeverity } from 'vscode-languageserver-types';
 import * as fs from 'fs';
 
 // Mock fs for cross-file checks

@@ -29,13 +29,13 @@ Gamma
     describe('Hover', () => {
         it('should explain Gamma mode', () => {
             const result = getKpointsHover(kpointsText, Position.create(2, 0));
-            // @ts-expect-error - contents.value check
+            // @ts-expect-error - MarkupContent has value property
             expect(result?.contents.value).toContain('**Gamma Centered Grid**');
         });
 
         it('should explain grid definition', () => {
             const result = getKpointsHover(kpointsText, Position.create(3, 0));
-            // @ts-expect-error
+            // @ts-expect-error - MarkupContent has value property
             expect(result?.contents.value).toContain('**Grid Definition**');
         });
     });

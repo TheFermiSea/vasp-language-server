@@ -20,6 +20,17 @@ Monkhorst-Pack
         expect(parsed.grid).toEqual([4, 4, 4]);
     });
 
+    test('Parses shift line for automatic grids', () => {
+        const content = `Automatic Generation
+0
+Gamma
+4 4 4
+0.5 0 0`;
+        const parsed = parseKpoints(createDoc(content));
+        expect(parsed.isValid).toBe(true);
+        expect(parsed.shift).toEqual([0.5, 0, 0]);
+    });
+
     test('Fails on short file', () => {
         const content = `Header
 0`;

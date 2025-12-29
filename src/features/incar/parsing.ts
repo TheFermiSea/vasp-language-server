@@ -52,30 +52,39 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        const continuationIndex = (() => {
+            for (let j = line.length - 1; j >= 0; j--) {
+                const char = line[j];
+                if (char === ' ' || char === '\t') continue;
+                return char === '\\' ? j : -1;
+            }
+            return -1;
+        })();
+        const lineForParse = continuationIndex >= 0 ? line.slice(0, continuationIndex) : line;
+        const isContinuation = continuationIndex >= 0;
         let offset = 0;
-        let isContinuation = false;
 
         // Check for continuation behavior
         // If line ends with \, it's a continuation.
 
-        while (offset < line.length) {
+        while (offset < lineForParse.length) {
             // Skip whitespace
-            const whitespace = line.slice(offset).match(/^\s+/);
+            const whitespace = lineForParse.slice(offset).match(/^\s+/);
             if (whitespace) {
                 offset += whitespace[0].length;
                 continue;
             }
-            if (offset >= line.length) break;
+            if (offset >= lineForParse.length) break;
 
-            const char = line[offset];
-            const remaining = line.slice(offset);
+            const char = lineForParse[offset];
+            const remaining = lineForParse.slice(offset);
 
             // 1. Comment
             if (char === '#' || char === '!') {
                 tokens.push({
                     type: 'comment',
                     text: remaining,
-                    range: Range.create(i, offset, i, line.length)
+                    range: Range.create(i, offset, i, lineForParse.length)
                 });
                 break; // Rest of line is comment
             }
@@ -104,10 +113,8 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
 
             // 4. Line Continuation (\)
             if (char === '\\') {
-                // If followed by optional whitespace and then newline?
-                // We just see if it's the last significant char.
-                // For now, treat as token, parser state logic handles "no EOL".
-                isContinuation = true;
+                // Inline backslashes are treated as literal characters.
+                // A trailing backslash is handled by the line-level continuation check above.
                 offset++;
                 continue;
             }
@@ -129,7 +136,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                     tokens.push({
                         type: 'invalid',
                         text: remaining,
-                        range: Range.create(i, offset, i, line.length)
+                        range: Range.create(i, offset, i, lineForParse.length)
                     });
                     break;
                 }
@@ -168,6 +175,7 @@ function groupTokensIntoStatements(tokens: IncarToken[]): IncarStatement[] {
     const statements: IncarStatement[] = [];
     let currentTag: IncarToken | null = null;
     let hasEquals = false;
+    let equalsToken: IncarToken | undefined;
     let currentValues: IncarToken[] = [];
 
     // Helper to flush current statement
@@ -190,13 +198,14 @@ function groupTokensIntoStatements(tokens: IncarToken[]): IncarStatement[] {
 
             statements.push({
                 tag: { ...currentTag, type: 'tag' },
-                equals: hasEquals ? { type: 'equals', text: '=', range: Range.create(0, 0, 0, 0) } : undefined, // Placeholder range need fix? No, just existence check mostly.
+                equals: hasEquals ? equalsToken : undefined,
                 values: currentValues,
                 parsingErrors: diags
             });
         }
         currentTag = null;
         hasEquals = false;
+        equalsToken = undefined;
         currentValues = [];
     };
 
@@ -219,6 +228,7 @@ function groupTokensIntoStatements(tokens: IncarToken[]): IncarStatement[] {
         if (t.type === 'equals') {
             if (currentTag) {
                 hasEquals = true;
+                equalsToken = t;
             }
             i++;
             continue;

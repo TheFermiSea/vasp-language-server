@@ -1,6 +1,6 @@
 # Advanced Configuration & Features
 
-VASP Language Server (v1.0.1) introduces authoritative validation for complex functional setups. This guide explains the strict scientific rules enforced by the server.
+VASP Language Server (v1.0.0) introduces authoritative validation for complex functional setups. This guide explains the strict scientific rules enforced by the server.
 
 ## 1. Hubbard U (LDA+U) Support
 

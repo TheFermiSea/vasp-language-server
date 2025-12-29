@@ -47,7 +47,7 @@ require'lspconfig'.vasp_ls.setup{
 | **Semantic Tokens** | ✅ | ✅ | - | ✅ |
 | **Folding** | ✅ | ✅ | - | - |
 
-### Advanced VASP Support <sup>(New in v1.0.1)</sup>
+### Advanced VASP Support <sup>(New in v1.0.0)</sup>
 
 Check out the [Advanced Configuration Guide](docs/ADVANCED_CONFIGURATION.md) for deep dives into:
 

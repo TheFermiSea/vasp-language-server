@@ -87,6 +87,17 @@ SIGMA = .05
         const diagnostics = validateIncar(parsed);
         expect(diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
     });
+
+    test('handles Fortran D-notation for floats', () => {
+        const text = `
+ENCUT = 5.0D+2
+SIGMA = -1.0d-2
+`;
+        const doc = TextDocument.create('file:///INCAR', 'vasp', 1, text);
+        const parsed = parseIncar(doc);
+        const diagnostics = validateIncar(parsed);
+        expect(diagnostics.filter((d) => d.severity === 1)).toHaveLength(0);
+    });
 });
 
 import { parseKpoints } from '../../features/kpoints/parsing';

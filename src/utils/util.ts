@@ -17,7 +17,7 @@ export function countUntil<T>(arr: Array<T>, condition: (val: T) => boolean): nu
 export function isNumber(str: string): boolean {
     // Standard VASP number: optionally starts with "N*" repetition factor.
     // e.g., 5*1.2, 10*0, -1.2e-5, .5
-    return /^(\d+\*)?-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(str);
+    return /^(\d+\*)?[-+]?(\d+(\.\d*)?|\.\d+)([eEdD][-+]?\d+)?$/.test(str);
 }
 
 /**

@@ -6,7 +6,7 @@ import { PoscarLine } from './parsing';
  * Generates Document Symbols for POSCAR files.
  * Uses heuristics to identify sections (Lattice, Species, Coordinates).
  */
-export function getPoscarSymbols(document: TextDocument, parsed?: PoscarLine[]): DocumentSymbol[] {
+export function getPoscarSymbols(document: TextDocument, _parsed?: PoscarLine[]): DocumentSymbol[] {
     const symbols: DocumentSymbol[] = [];
     const text = document.getText();
     const lines = text.split(/\r?\n/);

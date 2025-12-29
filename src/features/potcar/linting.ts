@@ -25,7 +25,7 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
     let filePath: string;
     try {
         filePath = fileURLToPath(document.uri);
-    } catch (e) {
+    } catch {
         // Fallback for non-standard URIs or if url module fails
         filePath = decodeURIComponent(document.uri).replace(/^file:\/\/\/?/, '');
         if (process.platform === 'win32' && !filePath.includes(':')) {
