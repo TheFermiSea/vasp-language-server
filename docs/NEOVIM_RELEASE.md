@@ -21,6 +21,7 @@ Releases are Git-based (no package registry).
    - `git tag vX.Y.Z`
 3. Push tags:
    - `git push origin vX.Y.Z`
+4. GitHub Actions will publish a release automatically on tag push.
 
 ## Post-Release
 
