@@ -28,7 +28,7 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
         return diagnostics;
     }
 
-    // Attempt to find POSCAR in the same directory for cross-validation
+    // Attempt to find POSCAR or CONTCAR in the same directory for cross-validation
     let filePath: string;
     try {
         filePath = fileURLToPath(document.uri);
@@ -40,10 +40,12 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
 
     const dir = path.dirname(filePath);
     const poscarPath = path.join(dir, 'POSCAR');
+    const contcarPath = path.join(dir, 'CONTCAR');
+    const structurePath = fs.existsSync(poscarPath) ? poscarPath : fs.existsSync(contcarPath) ? contcarPath : null;
 
-    if (fs.existsSync(poscarPath)) {
+    if (structurePath) {
         try {
-            const poscarContent = await fs.promises.readFile(poscarPath, 'utf-8');
+            const poscarContent = await fs.promises.readFile(structurePath, 'utf-8');
             const poscarElements = getPoscarElements(poscarContent);
 
             if (poscarElements.length === 0) {
@@ -107,7 +109,9 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
             }
         } catch (error) {
             logger.warn(
-                `Could not read POSCAR for cross-validation: ${error instanceof Error ? error.message : 'unknown error'}`
+                `Could not read ${path.basename(structurePath)} for cross-validation: ${
+                    error instanceof Error ? error.message : 'unknown error'
+                }`
             );
         }
     }

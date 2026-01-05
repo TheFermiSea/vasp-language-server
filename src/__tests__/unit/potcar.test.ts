@@ -302,6 +302,21 @@ End
         expect(diags[0].message).toContain("expects 'Fe'");
     });
 
+    test('Falls back to CONTCAR when POSCAR missing', async () => {
+        (fs.existsSync as jest.Mock).mockImplementation((testPath: string) => testPath.endsWith('CONTCAR'));
+        const contcarContent = `System\n1.0\nVec1\nVec2\nVec3\nFe O\n1 1\nDirect\n0 0 0\n0.5 0.5 0.5`;
+        (fs.promises.readFile as jest.Mock).mockResolvedValue(contcarContent);
+
+        const content = `
+VRHFIN = Fe:
+End
+VRHFIN = O:
+End
+`;
+        const diags = await validatePotcar(createDoc(content));
+        expect(diags).toHaveLength(0);
+    });
+
     test('Detects no elements in junk file', async () => {
         const content = 'total garbage';
         const doc = createDoc(content);
