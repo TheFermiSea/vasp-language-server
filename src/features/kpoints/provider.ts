@@ -5,9 +5,11 @@ import {
     HoverParams,
     SemanticTokens,
     SemanticTokensParams,
-    Diagnostic
+    Diagnostic,
+    DocumentFormattingParams
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { TextEdit } from 'vscode-languageserver-types';
 import { BaseFeatureProvider } from '../../core/feature-provider';
 import { VaspStructure } from '../../core/document-cache';
 import { parseKpoints } from './parsing';
@@ -15,6 +17,7 @@ import { validateKpoints } from './linting';
 import { getKpointsCompletions } from './completion';
 import { getKpointsHover } from './hover';
 import { getKpointsSemanticTokens } from './semantic-tokens';
+import { formatKpoints } from './formatting';
 
 export class KpointsFeatureProvider extends BaseFeatureProvider {
     parse(document: TextDocument): VaspStructure {
@@ -36,5 +39,9 @@ export class KpointsFeatureProvider extends BaseFeatureProvider {
 
     getSemanticTokens(document: TextDocument, _params: SemanticTokensParams): SemanticTokens {
         return getKpointsSemanticTokens(document.getText());
+    }
+
+    format(document: TextDocument, _params: DocumentFormattingParams): TextEdit[] {
+        return formatKpoints(document);
     }
 }

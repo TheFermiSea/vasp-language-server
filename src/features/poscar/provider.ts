@@ -7,9 +7,11 @@ import {
     DocumentSymbolParams,
     FoldingRange,
     FoldingRangeParams,
-    Diagnostic
+    Diagnostic,
+    DocumentFormattingParams
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { TextEdit } from 'vscode-languageserver-types';
 import { BaseFeatureProvider } from '../../core/feature-provider';
 import { VaspStructure } from '../../core/document-cache';
 import { parsePoscar } from './parsing';
@@ -18,6 +20,7 @@ import { getPoscarHover } from './hover';
 import { getPoscarSemanticTokens } from './semantic-tokens';
 import { getPoscarSymbols } from './symbols';
 import { getFoldingRanges } from './folding';
+import { formatPoscar } from './formatting';
 
 export class PoscarFeatureProvider extends BaseFeatureProvider {
     parse(document: TextDocument): VaspStructure {
@@ -48,5 +51,9 @@ export class PoscarFeatureProvider extends BaseFeatureProvider {
         const lines = document.getText().split(/\r?\n/);
         const poscarLines = parsed?.type === 'poscar' ? parsed.data.lines : undefined;
         return getFoldingRanges(lines, poscarLines);
+    }
+
+    format(document: TextDocument, _params: DocumentFormattingParams): TextEdit[] {
+        return formatPoscar(document);
     }
 }
