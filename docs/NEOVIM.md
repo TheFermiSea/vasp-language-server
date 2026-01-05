@@ -10,6 +10,22 @@
 npm install -g vasp-language-server
 ```
 
+### 2. Install the Neovim Plugin (Recommended)
+
+Using `lazy.nvim`:
+
+```lua
+return {
+  {
+    "TheFermiSea/vasp-language-server",
+    ft = "vasp",
+    config = function()
+      require("vasp-lsp").setup()
+    end,
+  },
+}
+```
+
 ### 2. Configure LazyVim
 
 Add this to `lua/plugins/vasp.lua`:

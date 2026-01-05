@@ -1,0 +1,55 @@
+{
+  "name": "vasp-language-server-client",
+  "displayName": "VASP Language Server",
+  "description": "VS Code client extension for the VASP Language Server (INCAR, POSCAR, KPOINTS, POTCAR).",
+  "version": "0.0.1",
+  "publisher": "thefermiesea",
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:vasp"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "vasp",
+        "aliases": [
+          "VASP"
+        ],
+        "filenames": [
+          "INCAR",
+          "POSCAR",
+          "CONTCAR",
+          "POTCAR",
+          "KPOINTS"
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "VASP Language Server",
+      "properties": {
+        "vaspLsp.serverPath": {
+          "type": "string",
+          "default": "vasp-lsp",
+          "description": "Path to the vasp-lsp binary (defaults to vasp-lsp on PATH)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.88.0",
+    "typescript": "^5.9.3"
+  }
+}

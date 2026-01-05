@@ -85,6 +85,8 @@ Use any generic LSP client extension (e.g., "Language Server Protocol (LSP) Clie
 * **Command**: `vasp-lsp`
 * **Args**: `["--stdio"]`
 
+We also provide a minimal VS Code client scaffold in `client/vscode` for packaging as a dedicated extension.
+
 ### Neovim
 
 We strongly recommend using `nvim-lspconfig`. See [docs/NEOVIM.md](docs/NEOVIM.md) for a zero-friction setup with **LazyVim**.
