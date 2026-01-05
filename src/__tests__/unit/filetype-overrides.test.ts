@@ -64,6 +64,7 @@ describe('File type overrides', () => {
         );
 
         expect(getFileType('file:///tmp/INCAR.relax')).toBe('incar');
+        expect(getFileType('file:///tmp/incar.relax')).toBe('incar');
         expect(getFileType('file:///tmp/structure.vasp')).toBe('poscar');
         expect(getFileType('file:///tmp/mesh.kp')).toBe('kpoints');
     });
