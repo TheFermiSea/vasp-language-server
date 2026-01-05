@@ -3,6 +3,8 @@ import { parsePoscar } from '../../features/poscar/parsing';
 import { parseIncar } from '../../features/incar/parsing';
 
 describe('Parser Stress Tests', () => {
+    const MAX_POSCAR_PARSE_MS = process.env.CI ? 2000 : 1000;
+
     test('POSCAR parsing of a massive structure (100k atoms)', () => {
         // approx 100,000 atoms * 100 bytes per line = 10MB file
         const numAtoms = 100000;
@@ -27,7 +29,7 @@ describe('Parser Stress Tests', () => {
         console.log(`Stress: parsing ${numAtoms} atoms took ${endTime - startTime}ms`);
 
         expect(parsed.lines.length).toBeGreaterThan(numAtoms);
-        expect(endTime - startTime).toBeLessThan(1000); // Should parse 100k atoms in < 1s
+        expect(endTime - startTime).toBeLessThan(MAX_POSCAR_PARSE_MS);
     });
 
     test('INCAR parsing of a very long file (10k tags)', () => {

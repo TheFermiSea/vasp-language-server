@@ -6,6 +6,7 @@ import {
     PagesResponse,
     CategoryMembersResponse
 } from '../../tools/vasp-wiki';
+import { logger } from '../../utils/logger';
 
 jest.mock('mwn', () => ({
     Mwn: jest.fn()
@@ -14,6 +15,12 @@ jest.mock('mwn', () => ({
 describe('VASP Wiki Scraper', () => {
     const mwnMock = Mwn as unknown as jest.Mock;
     const converter = { convert: (html: string) => html };
+
+    beforeEach(() => {
+        jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+        jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+        jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+    });
 
     afterEach(() => {
         jest.resetAllMocks();
