@@ -25,20 +25,29 @@ describe('DocumentCache', () => {
         expect(cache.get(doc2)).toBeUndefined();
     });
 
-    test('should enforce FIFO limit of 50', () => {
+    test('should enforce LRU limit of 50', () => {
         const docs: TextDocument[] = [];
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 50; i++) {
             docs.push(TextDocument.create(`file:///test${i}.incar`, 'vasp', 1, ''));
             cache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
         }
 
-        // First 10 should be gone (60 - 50 = 10 removed)
-        for (let i = 0; i < 10; i++) {
+        // Touch the first document so it becomes most recently used.
+        expect(cache.get(docs[0])).toBeDefined();
+
+        for (let i = 50; i < 60; i++) {
+            docs.push(TextDocument.create(`file:///test${i}.incar`, 'vasp', 1, ''));
+            cache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
+        }
+
+        // Documents 1-10 should be gone (least recently used)
+        for (let i = 1; i <= 10; i++) {
             expect(cache.get(docs[i])).toBeUndefined();
         }
 
-        // Last 50 should remain
-        for (let i = 10; i < 60; i++) {
+        // The touched doc0 should remain, along with the most recent additions.
+        expect(cache.get(docs[0])).toBeDefined();
+        for (let i = 11; i < 60; i++) {
             expect(cache.get(docs[i])).toBeDefined();
         }
     });
@@ -59,18 +68,28 @@ describe('DocumentCache', () => {
         const customCache = new DocumentCache(5);
         const docs: TextDocument[] = [];
 
-        // Add 7 documents to a cache with size 5
-        for (let i = 0; i < 7; i++) {
+        // Add 5 documents to a cache with size 5
+        for (let i = 0; i < 5; i++) {
             docs.push(TextDocument.create(`file:///custom${i}.incar`, 'vasp', 1, ''));
             customCache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
         }
 
-        // First 2 should be evicted (7 - 5 = 2 removed)
-        expect(customCache.get(docs[0])).toBeUndefined();
-        expect(customCache.get(docs[1])).toBeUndefined();
+        // Touch first entry to mark it as most recently used.
+        expect(customCache.get(docs[0])).toBeDefined();
 
-        // Last 5 should remain
-        for (let i = 2; i < 7; i++) {
+        // Add 2 more documents to trigger eviction
+        for (let i = 5; i < 7; i++) {
+            docs.push(TextDocument.create(`file:///custom${i}.incar`, 'vasp', 1, ''));
+            customCache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
+        }
+
+        // Oldest untouched entries should be evicted
+        expect(customCache.get(docs[1])).toBeUndefined();
+        expect(customCache.get(docs[2])).toBeUndefined();
+
+        // Most recent entries should remain
+        expect(customCache.get(docs[0])).toBeDefined();
+        for (let i = 3; i < 7; i++) {
             expect(customCache.get(docs[i])).toBeDefined();
         }
     });
@@ -79,19 +98,29 @@ describe('DocumentCache', () => {
         const defaultCache = new DocumentCache();
         const docs: TextDocument[] = [];
 
-        // Add 55 documents - should evict first 5
-        for (let i = 0; i < 55; i++) {
+        // Add 50 documents (fill the cache)
+        for (let i = 0; i < 50; i++) {
             docs.push(TextDocument.create(`file:///default${i}.incar`, 'vasp', 1, ''));
             defaultCache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
         }
 
-        // First 5 should be evicted (55 - 50 = 5 removed)
-        for (let i = 0; i < 5; i++) {
+        // Touch an early entry so it survives eviction.
+        expect(defaultCache.get(docs[0])).toBeDefined();
+
+        // Add 5 more documents - should evict least recently used
+        for (let i = 50; i < 55; i++) {
+            docs.push(TextDocument.create(`file:///default${i}.incar`, 'vasp', 1, ''));
+            defaultCache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
+        }
+
+        // Entries 1-5 should be evicted (least recently used)
+        for (let i = 1; i <= 5; i++) {
             expect(defaultCache.get(docs[i])).toBeUndefined();
         }
 
-        // Last 50 should remain
-        for (let i = 5; i < 55; i++) {
+        // Touched entry and new ones should remain
+        expect(defaultCache.get(docs[0])).toBeDefined();
+        for (let i = 6; i < 55; i++) {
             expect(defaultCache.get(docs[i])).toBeDefined();
         }
     });

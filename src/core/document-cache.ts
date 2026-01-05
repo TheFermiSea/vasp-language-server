@@ -26,7 +26,6 @@ export const DEFAULT_CACHE_SIZE = 50;
  */
 export class DocumentCache {
     private cache = new Map<string, { version: number; structure: VaspStructure }>();
-    private order: string[] = [];
     private readonly maxSize: number;
 
     /**
@@ -46,13 +45,15 @@ export class DocumentCache {
     public get(document: TextDocument): VaspStructure | undefined {
         const cached = this.cache.get(document.uri);
         if (cached && cached.version === document.version) {
+            this.cache.delete(document.uri);
+            this.cache.set(document.uri, cached);
             return cached.structure;
         }
         return undefined;
     }
 
     /**
-     * Store a parsed structure in the cache and enforce FIFO eviction.
+     * Store a parsed structure in the cache and enforce LRU eviction.
      *
      * @param document - The document providing the cache key and version.
      * @param structure - Parsed document structure to cache.
@@ -60,18 +61,17 @@ export class DocumentCache {
     public set(document: TextDocument, structure: VaspStructure): void {
         const uri = document.uri;
 
-        if (!this.cache.has(uri)) {
-            this.order.push(uri);
+        if (this.cache.has(uri)) {
+            this.cache.delete(uri);
         }
-
         this.cache.set(uri, {
             version: document.version,
             structure
         });
 
-        // Enforce FIFO limit
-        if (this.order.length > this.maxSize) {
-            const oldest = this.order.shift();
+        // Enforce LRU limit
+        if (this.cache.size > this.maxSize) {
+            const oldest = this.cache.keys().next().value;
             if (oldest) {
                 this.cache.delete(oldest);
             }
@@ -85,9 +85,5 @@ export class DocumentCache {
      */
     public delete(uri: string): void {
         this.cache.delete(uri);
-        const index = this.order.indexOf(uri);
-        if (index > -1) {
-            this.order.splice(index, 1);
-        }
     }
 }
