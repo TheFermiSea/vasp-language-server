@@ -33,17 +33,9 @@ jobs:
       - name: Pack npm tarball
         run: npm pack --silent
 
-      - name: Build VS Code extension
-        working-directory: client/vscode
-        run: |
-          npm install
-          npm run build
-          npx @vscode/vsce package --no-yarn -o vasp-language-server.vsix
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
             *.tgz
-            client/vscode/*.vsix
