@@ -18,13 +18,24 @@ export type DFTStructure =
 // Backwards compatibility alias
 export type VaspStructure = DFTStructure;
 
+/** Default maximum number of documents to cache */
+export const DEFAULT_CACHE_SIZE = 50;
+
 /**
  * Caches parsed results (ASTs) for open documents.
  */
 export class DocumentCache {
     private cache = new Map<string, { version: number; structure: VaspStructure }>();
     private order: string[] = [];
-    private readonly MAX_SIZE = 50;
+    private readonly maxSize: number;
+
+    /**
+     * Creates a new DocumentCache.
+     * @param maxSize Maximum number of documents to cache (default: 50)
+     */
+    constructor(maxSize: number = DEFAULT_CACHE_SIZE) {
+        this.maxSize = maxSize;
+    }
 
     public get(document: TextDocument): VaspStructure | undefined {
         const cached = this.cache.get(document.uri);
@@ -47,7 +58,7 @@ export class DocumentCache {
         });
 
         // Enforce FIFO limit
-        if (this.order.length > this.MAX_SIZE) {
+        if (this.order.length > this.maxSize) {
             const oldest = this.order.shift();
             if (oldest) {
                 this.cache.delete(oldest);

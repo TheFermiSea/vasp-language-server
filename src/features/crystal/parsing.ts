@@ -173,9 +173,28 @@ export function parseCrystal(document: TextDocument): CrystalDocument {
     const allStatements: CrystalStatement[] = [];
     const errors: ParseError[] = [];
 
+    // Minimum file validation
+    if (lines.length < 2) {
+        errors.push({
+            message: `CRYSTAL23 input file is too short (${lines.length} line${lines.length === 1 ? '' : 's'}). A valid .d12 file requires at minimum:\n  Line 1: Title/comment\n  Line 2: Geometry type (CRYSTAL, SLAB, POLYMER, MOLECULE)\n  Plus: Space group, lattice parameters, atom coordinates, basis set, and SCF settings.`,
+            range: createRange(0, 0, 0, lines[0]?.length || 0),
+            severity: 'error'
+        });
+    }
+
     // Parse title (first line)
     const titleToken = createToken('title', lines[0] || '', 0, 0, lines[0]?.length || 0);
     allTokens.push(titleToken);
+
+    // Warn if title is empty
+    if (!lines[0] || lines[0].trim().length === 0) {
+        errors.push({
+            message:
+                'Line 1: Empty title line. While valid, it is recommended to include a descriptive title for your calculation.',
+            range: createRange(0, 0, 0, 0),
+            severity: 'warning'
+        });
+    }
 
     // Initialize sections
     const geometry: GeometrySection = {
@@ -200,12 +219,19 @@ export function parseCrystal(document: TextDocument): CrystalDocument {
         }
         if (geometry.type === 'UNKNOWN') {
             errors.push({
-                message: `Unknown geometry type: ${geomLine}. Expected: ${GEOMETRY_TYPES.join(', ')}`,
+                message: `Line 2: Unknown geometry type '${geomLine}'. Expected one of:\n  - CRYSTAL: 3D periodic structure\n  - SLAB: 2D periodic (surface)\n  - POLYMER: 1D periodic (chain)\n  - MOLECULE: Non-periodic (cluster)\n  - HELIX: Helical symmetry\n  - EXTERNAL: Read geometry from external file`,
                 range: createRange(1, 0, 1, lines[1].length),
                 severity: 'error'
             });
         }
         currentLine = 2;
+    } else {
+        errors.push({
+            message:
+                'Line 2: Missing geometry type declaration. A CRYSTAL23 input file must specify the system dimensionality (CRYSTAL, SLAB, POLYMER, MOLECULE, etc.).',
+            range: createRange(1, 0, 1, 0),
+            severity: 'error'
+        });
     }
 
     // Parse remaining lines based on context
@@ -295,15 +321,46 @@ export function parseCrystal(document: TextDocument): CrystalDocument {
         }
 
         // Check if line looks like a number sequence (lattice params, atom coords, etc.)
-        if (/^[\d.\s-]+$/.test(trimmed)) {
+        if (/^[\d.\s\-+eE]+$/.test(trimmed)) {
             const numToken = createToken('number', trimmed, i, 0, trimmed.length);
             allTokens.push(numToken);
+
+            // Validate numeric values
+            const numParts = trimmed.split(/\s+/).filter((p) => p.length > 0);
+            for (let j = 0; j < numParts.length; j++) {
+                const val = Number(numParts[j]);
+                if (isNaN(val)) {
+                    errors.push({
+                        message: `Line ${i + 1}: Invalid numeric value '${numParts[j]}' at position ${j + 1}. Expected a valid number (integer or decimal, with optional scientific notation like 1.23e-4).`,
+                        range: createRange(i, 0, i, trimmed.length),
+                        severity: 'error'
+                    });
+                }
+            }
             continue;
         }
 
-        // Unknown token
+        // Unknown token - provide context-aware suggestions
         const unknownToken = createToken('unknown', trimmed, i, 0, trimmed.length);
         allTokens.push(unknownToken);
+
+        // Try to provide helpful suggestions for common mistakes
+        const upperTrimmed = trimmed.toUpperCase();
+        let suggestion = '';
+
+        // Check for common typos or similar keywords
+        const similarKeywords = [...BLOCK_START_KEYWORDS, ...STANDALONE_KEYWORDS].filter(
+            (kw) => kw.includes(upperTrimmed.slice(0, 3)) || upperTrimmed.includes(kw.slice(0, 3))
+        );
+        if (similarKeywords.length > 0) {
+            suggestion = ` Did you mean: ${similarKeywords.slice(0, 3).join(', ')}?`;
+        }
+
+        errors.push({
+            message: `Line ${i + 1}: Unrecognized keyword or data '${trimmed}'.${suggestion} If this is numeric data, ensure it contains only numbers, spaces, and decimal points.`,
+            range: createRange(i, 0, i, trimmed.length),
+            severity: 'warning'
+        });
     }
 
     return {

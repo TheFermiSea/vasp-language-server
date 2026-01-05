@@ -54,6 +54,14 @@ import { logger } from '../utils/logger';
 import { DocumentCache, VaspStructure } from './document-cache';
 
 /**
+ * Configuration options for the LSP server.
+ */
+export interface LspServerOptions {
+    /** Maximum number of documents to cache (default: 50) */
+    cacheSize?: number;
+}
+
+/**
  * Encapsulates the VASP Language Server logic.
  */
 export class LspServer {
@@ -61,10 +69,10 @@ export class LspServer {
     private documents: TextDocuments<TextDocument>;
     private cache: DocumentCache;
 
-    constructor() {
+    constructor(options: LspServerOptions = {}) {
         this.connection = createConnection(ProposedFeatures.all);
         this.documents = new TextDocuments(TextDocument);
-        this.cache = new DocumentCache();
+        this.cache = new DocumentCache(options.cacheSize);
 
         // Initialize logger with connection
         logger.initialize(this.connection);
@@ -126,24 +134,115 @@ export class LspServer {
     }
 
     /**
-     * Determine the file type from the document URI
+     * Determine the file type from the document URI.
+     *
+     * Handles various edge cases:
+     * - Cross-platform path separators (/ and \)
+     * - URI-encoded characters (e.g., %20 for spaces)
+     * - Case-insensitive matching for VASP files
+     * - File extensions (.d12 for CRYSTAL23)
+     * - Common naming patterns (INCAR, POSCAR, CONTCAR, KPOINTS, POTCAR)
+     * - Prefixed/suffixed filenames (e.g., my_INCAR, INCAR.bak, INCAR_relaxation)
      */
     private getFileType(uri: string): 'incar' | 'poscar' | 'kpoints' | 'potcar' | 'crystal' | 'unknown' {
-        const fileName = uri.split('/').pop() || '';
-        const upper = fileName.toUpperCase();
+        // Decode URI-encoded characters (e.g., %20 -> space)
+        let decodedUri: string;
+        try {
+            decodedUri = decodeURIComponent(uri);
+        } catch {
+            // If decoding fails, use original URI
+            decodedUri = uri;
+        }
 
-        // CRYSTAL23 .d12 files
-        if (fileName.endsWith('.d12') || fileName.endsWith('.D12')) {
+        // Extract filename - handle both forward and back slashes for cross-platform support
+        // Also handle 'file://' protocol prefix
+        const pathWithoutProtocol = decodedUri.replace(/^file:\/\//, '');
+        const pathParts = pathWithoutProtocol.split(/[/\\]/);
+        const fileName = pathParts[pathParts.length - 1] || '';
+
+        // Handle empty filename edge case
+        if (!fileName.trim()) {
+            return 'unknown';
+        }
+
+        // Normalize to uppercase for case-insensitive comparison
+        const upperFileName = fileName.toUpperCase();
+
+        // CRYSTAL23 .d12 files - check extension case-insensitively
+        if (upperFileName.endsWith('.D12')) {
             return 'crystal';
         }
 
-        // VASP files
-        if (upper.includes('INCAR')) return 'incar';
-        if (upper.includes('POSCAR') || upper.includes('CONTCAR')) return 'poscar';
-        if (upper.includes('KPOINTS')) return 'kpoints';
-        if (upper.includes('POTCAR')) return 'potcar';
+        // VASP files - use word boundary-aware matching to avoid false positives
+        // This handles: INCAR, my_INCAR, INCAR.bak, INCAR_old, but not MINCAR
+
+        // Check for INCAR (but not things like MINCAR - require word boundary or start)
+        if (this.matchesVaspFilePattern(upperFileName, 'INCAR')) {
+            return 'incar';
+        }
+
+        // Check for POSCAR or CONTCAR
+        if (
+            this.matchesVaspFilePattern(upperFileName, 'POSCAR') ||
+            this.matchesVaspFilePattern(upperFileName, 'CONTCAR')
+        ) {
+            return 'poscar';
+        }
+
+        // Check for KPOINTS
+        if (this.matchesVaspFilePattern(upperFileName, 'KPOINTS')) {
+            return 'kpoints';
+        }
+
+        // Check for POTCAR
+        if (this.matchesVaspFilePattern(upperFileName, 'POTCAR')) {
+            return 'potcar';
+        }
 
         return 'unknown';
+    }
+
+    /**
+     * Check if a filename matches a VASP file pattern.
+     *
+     * Matches patterns like:
+     * - Exact match: INCAR
+     * - With prefix: my_INCAR, test-INCAR
+     * - With suffix: INCAR.bak, INCAR_old, INCAR.1
+     * - Combined: my_INCAR.bak
+     *
+     * Does NOT match if the pattern is embedded within a larger word:
+     * - MINCAR (M is a letter, not a valid prefix separator)
+     *
+     * @param upperFileName - The uppercase filename to check
+     * @param pattern - The VASP file pattern to match (e.g., 'INCAR')
+     */
+    private matchesVaspFilePattern(upperFileName: string, pattern: string): boolean {
+        const index = upperFileName.indexOf(pattern);
+        if (index === -1) {
+            return false;
+        }
+
+        // Check character before the pattern (if any)
+        // Valid: start of string, or non-alphanumeric character (like _, -, .)
+        if (index > 0) {
+            const charBefore = upperFileName[index - 1];
+            if (/[A-Z0-9]/.test(charBefore)) {
+                return false;
+            }
+        }
+
+        // Check character after the pattern (if any)
+        // Valid: end of string, or non-alphanumeric character (like _, -, ., or extension)
+        const afterIndex = index + pattern.length;
+        if (afterIndex < upperFileName.length) {
+            const charAfter = upperFileName[afterIndex];
+            if (/[A-Z0-9]/.test(charAfter)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private async validateTextDocument(textDocument: TextDocument): Promise<void> {

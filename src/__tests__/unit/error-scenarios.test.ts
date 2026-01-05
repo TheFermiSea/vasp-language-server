@@ -26,9 +26,11 @@ describe('Error Scenarios - Malformed Input', () => {
         test('handles single line POSCAR', () => {
             const doc = TextDocument.create('file:///POSCAR', 'vasp', 1, 'Title only');
             const parsed = parsePoscar(doc);
-            const diags = validatePoscar(doc, parsed);
+            // Parser now returns early for files < 7 lines with diagnostics
             expect(parsed).toBeDefined();
-            expect(parsed.lines.length).toBe(1);
+            // Short files now produce diagnostics about being too short
+            expect(parsed.diagnostics.length).toBeGreaterThan(0);
+            expect(parsed.diagnostics[0].message).toContain('too short');
         });
 
         test('handles whitespace-only INCAR', () => {

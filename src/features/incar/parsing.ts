@@ -132,12 +132,14 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                     offset += match[0].length;
                     continue;
                 } else {
-                    // Unclosed string
+                    // Unclosed string - mark as invalid for later error reporting
                     tokens.push({
                         type: 'invalid',
                         text: remaining,
                         range: Range.create(i, offset, i, lineForParse.length)
                     });
+                    // Note: The invalid token will be caught during statement grouping
+                    // The error message is embedded in the token context
                     break;
                 }
             }
@@ -182,18 +184,41 @@ function groupTokensIntoStatements(tokens: IncarToken[]): IncarStatement[] {
     const flush = () => {
         if (currentTag) {
             const diags: Diagnostic[] = [];
+            const lineNum = currentTag.range.start.line + 1; // 1-based for user display
             if (!hasEquals) {
                 diags.push({
-                    message: `Expected '=' after tag '${currentTag.text}'.`,
+                    message: `Line ${lineNum}: Expected '=' after tag '${currentTag.text}'. INCAR syntax requires 'TAG = VALUE' format. Did you mean '${currentTag.text} = <value>'?`,
                     range: currentTag.range,
                     severity: DiagnosticSeverity.Error
                 });
             } else if (currentValues.length === 0) {
                 diags.push({
-                    message: `Tag '${currentTag.text}' has no value assigned.`,
+                    message: `Line ${lineNum}: Tag '${currentTag.text}' has no value assigned. Every INCAR tag requires a value (e.g., '${currentTag.text} = .TRUE.' or '${currentTag.text} = 1').`,
                     range: currentTag.range,
                     severity: DiagnosticSeverity.Warning
                 });
+            }
+
+            // Check for invalid tokens (e.g., unclosed strings)
+            for (const val of currentValues) {
+                if (val.type === 'invalid') {
+                    const valLineNum = val.range.start.line + 1;
+                    // Check if it looks like an unclosed string
+                    if (val.text.startsWith('"') || val.text.startsWith("'")) {
+                        const quoteChar = val.text[0];
+                        diags.push({
+                            message: `Line ${valLineNum}: Unclosed string starting with ${quoteChar}. Add a closing ${quoteChar} at the end of the string value.`,
+                            range: val.range,
+                            severity: DiagnosticSeverity.Error
+                        });
+                    } else {
+                        diags.push({
+                            message: `Line ${valLineNum}: Invalid syntax near '${val.text.substring(0, 20)}${val.text.length > 20 ? '...' : ''}'. Check for special characters or typos.`,
+                            range: val.range,
+                            severity: DiagnosticSeverity.Error
+                        });
+                    }
+                }
             }
 
             statements.push({

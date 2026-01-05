@@ -1,4 +1,4 @@
-import { DocumentCache } from '../../core/document-cache';
+import { DocumentCache, DEFAULT_CACHE_SIZE } from '../../core/document-cache';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 describe('DocumentCache', () => {
@@ -49,5 +49,50 @@ describe('DocumentCache', () => {
 
         cache.delete(doc.uri);
         expect(cache.get(doc)).toBeUndefined();
+    });
+
+    test('should export default cache size constant', () => {
+        expect(DEFAULT_CACHE_SIZE).toBe(50);
+    });
+
+    test('should support custom cache size', () => {
+        const customCache = new DocumentCache(5);
+        const docs: TextDocument[] = [];
+
+        // Add 7 documents to a cache with size 5
+        for (let i = 0; i < 7; i++) {
+            docs.push(TextDocument.create(`file:///custom${i}.incar`, 'vasp', 1, ''));
+            customCache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
+        }
+
+        // First 2 should be evicted (7 - 5 = 2 removed)
+        expect(customCache.get(docs[0])).toBeUndefined();
+        expect(customCache.get(docs[1])).toBeUndefined();
+
+        // Last 5 should remain
+        for (let i = 2; i < 7; i++) {
+            expect(customCache.get(docs[i])).toBeDefined();
+        }
+    });
+
+    test('should use default size when no parameter provided', () => {
+        const defaultCache = new DocumentCache();
+        const docs: TextDocument[] = [];
+
+        // Add 55 documents - should evict first 5
+        for (let i = 0; i < 55; i++) {
+            docs.push(TextDocument.create(`file:///default${i}.incar`, 'vasp', 1, ''));
+            defaultCache.set(docs[i], { type: 'incar' as const, data: { statements: [], allTokens: [] } });
+        }
+
+        // First 5 should be evicted (55 - 50 = 5 removed)
+        for (let i = 0; i < 5; i++) {
+            expect(defaultCache.get(docs[i])).toBeUndefined();
+        }
+
+        // Last 50 should remain
+        for (let i = 5; i < 55; i++) {
+            expect(defaultCache.get(docs[i])).toBeDefined();
+        }
     });
 });

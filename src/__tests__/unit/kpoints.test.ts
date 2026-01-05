@@ -62,8 +62,13 @@ ZebraMode
 4 4 4`;
         const parsed = parseKpoints(createDoc(content));
         const diags = validateKpoints(parsed);
-        expect(diags).toHaveLength(1);
-        expect(diags[0].message).toContain('Unknown KPOINTS mode');
+        // Parser now also reports unrecognized modes, so we may have more diagnostics
+        expect(diags.length).toBeGreaterThanOrEqual(1);
+        // Combined diagnostics from parser and linter - check at least one mentions the mode issue
+        const modeWarnings = diags.filter(
+            (d) => d.message.includes('Unknown KPOINTS mode') || d.message.includes('Unrecognized mode')
+        );
+        expect(modeWarnings.length).toBeGreaterThan(0);
     });
 
     test('Validates Integer Grid', () => {
@@ -76,6 +81,7 @@ Gamma
         // Parser might flag this as NaN or linter checks it
         // The parser expects integers for the grid logic I wrote
         expect(diags.length).toBeGreaterThan(0);
-        expect(diags[0].message).toContain('must be integers');
+        // Updated message now includes "positive integers"
+        expect(diags[0].message).toMatch(/must be.*integers/i);
     });
 });

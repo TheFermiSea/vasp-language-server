@@ -135,7 +135,8 @@ Gamma
 `;
         const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, text);
         const parsed = parseKpoints(doc);
-        expect(parsed.diagnostics.some((d) => d.message.includes('Grid values must be integers'))).toBe(true);
+        // Updated error message now says "positive integers"
+        expect(parsed.diagnostics.some((d) => d.message.match(/must be.*integers/i))).toBe(true);
     });
 
     test('fails on invalid auto length', () => {
@@ -146,6 +147,7 @@ Automatic
 `;
         const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, text);
         const parsed = parseKpoints(doc);
-        expect(parsed.diagnostics.some((d) => d.message.includes('positive number'))).toBe(true);
+        // Updated error message now says "must be positive"
+        expect(parsed.diagnostics.some((d) => d.message.match(/must be positive|positive/i))).toBe(true);
     });
 });
