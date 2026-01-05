@@ -73,6 +73,12 @@ Maximize your productivity with these plugins:
 
 ---
 
+## 📦 Releasing the Neovim Plugin
+
+See [NEOVIM_RELEASE.md](NEOVIM_RELEASE.md) for the release checklist.
+
+---
+
 ## 🛠 Manual Setup (Vanilla `init.lua`)
 
 If you don't use a plugin manager:
