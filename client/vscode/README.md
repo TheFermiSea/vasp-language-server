@@ -1,10 +1,10 @@
-# VASP Language Server (VS Code)
+# DFT Language Server (VS Code)
 
-This extension launches the VASP Language Server using the `vasp-lsp` binary.
+This optional scaffold launches the DFT Language Server using the `vasp-lsp` (or `dft-lsp`) binary.
 
 ## Prerequisites
 
-- Install the server globally: `npm install -g vasp-language-server`
+- Install the server globally: `npm install -g dft-language-server`
 - Ensure `vasp-lsp` is on your PATH
 
 ## Configuration
@@ -19,10 +19,15 @@ You can override the server path in settings:
 
 ## File Support
 
-The extension activates on VASP filenames:
+The extension activates on common VASP filenames and CRYSTAL23 `.d12`:
 
 - `INCAR`
 - `POSCAR`
 - `CONTCAR`
 - `POTCAR`
 - `KPOINTS`
+- `*.d12`
+
+## Notes
+
+This is intentionally minimal. Most users should use a generic LSP client or Neovim setup from `docs/NEOVIM.md`.

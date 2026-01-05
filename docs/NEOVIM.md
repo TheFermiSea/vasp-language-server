@@ -7,10 +7,12 @@
 ### 1. Install the Server
 
 ```bash
-npm install -g vasp-language-server
+npm install -g dft-language-server
 ```
 
-### 2. Install the Neovim Plugin (Recommended)
+This installs the `vasp-lsp` and `dft-lsp` executables.
+
+### 2. Install the Neovim Plugin (Optional)
 
 Using `lazy.nvim`:
 
@@ -18,7 +20,7 @@ Using `lazy.nvim`:
 return {
   {
     "TheFermiSea/vasp-language-server",
-    ft = "vasp",
+    ft = { "vasp", "crystal" },
     config = function()
       require("vasp-lsp").setup()
     end,
@@ -26,7 +28,7 @@ return {
 }
 ```
 
-### 2. Configure LazyVim
+### 3. Configure LazyVim
 
 Add this to `lua/plugins/vasp.lua`:
 
@@ -37,14 +39,12 @@ return {
     opts = {
       servers = {
         vasp_ls = {
-          -- Defaults to looking for 'vasp-lsp' in PATH
-          cmd = { "vasp-lsp", "--stdio" }, 
-          filetypes = { "vasp" },
+          cmd = { "vasp-lsp", "--stdio" },
+          filetypes = { "vasp", "crystal" },
         },
       },
       setup = {
         vasp_ls = function()
-          -- Add filetype detection for VASP files
           vim.filetype.add({
             pattern = {
               ['.*INCAR.*'] = 'vasp',
@@ -52,6 +52,7 @@ return {
               ['.*CONTCAR.*'] = 'vasp',
               ['.*POTCAR.*'] = 'vasp',
               ['.*KPOINTS.*'] = 'vasp',
+              ['.*%.d12'] = 'crystal',
             },
           })
         end,
@@ -67,9 +68,9 @@ return {
 
 Maximize your productivity with these plugins:
 
-1. **[nvim-cmp](https://github.com/hrsh7th/nvim-cmp)**: For intelligent autocompletion of VASP tags.
-2. **[telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)**: Use `:Telescope lsp_document_symbols` to navigate large INCAR/POSCAR files.
-3. **[catppuccin](https://github.com/catppuccin/nvim)**: A theme that supports our Semantic Tokens (colors booleans, numbers, and tags distinctly).
+1. **[nvim-cmp](https://github.com/hrsh7th/nvim-cmp)**: Autocompletion for INCAR/CRYSTAL keywords.
+2. **[telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)**: `:Telescope lsp_document_symbols` for large files.
+3. **[catppuccin](https://github.com/catppuccin/nvim)**: Semantic token highlighting support.
 
 ---
 
@@ -92,6 +93,7 @@ vim.filetype.add({
     ['.*CONTCAR.*'] = 'vasp',
     ['.*POTCAR.*'] = 'vasp',
     ['.*KPOINTS.*'] = 'vasp',
+    ['.*%.d12'] = 'crystal',
   },
 })
 
@@ -103,7 +105,7 @@ if not configs.vasp_ls then
   configs.vasp_ls = {
     default_config = {
       cmd = { 'vasp-lsp', '--stdio' },
-      filetypes = { 'vasp' },
+      filetypes = { 'vasp', 'crystal' },
       root_dir = lspconfig.util.root_pattern('.git', 'INCAR', 'POSCAR'),
       settings = {},
     },
@@ -115,7 +117,7 @@ lspconfig.vasp_ls.setup{}
 
 ### Optional: Filetype Overrides
 
-If your files use custom names or extensions, you can override detection with server settings:
+If your files use custom names or extensions, override detection with server settings:
 
 ```lua
 lspconfig.vasp_ls.setup{

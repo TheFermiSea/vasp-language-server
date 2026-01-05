@@ -1,22 +1,26 @@
-# VASP Language Server
+# DFT Language Server (VASP + CRYSTAL23)
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=flat-square)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Support](https://img.shields.io/badge/Target-VASP%206.5.x-EDA523?style=flat-square)](https://www.vasp.at/wiki)
 
-**The strictly typed, high-performance Language Server for Computational Materials Science.**
+**A strict, high‑performance Language Server for computational materials input files.**
 
-Eliminate `OUTCAR` syntax errors before they happen. VASP Language Server brings modern IDE intelligence to your `INCAR`, `POSCAR`, `KPOINTS`, and `POTCAR` files.
+VASP Language Server (a.k.a. the DFT Language Server) brings modern IDE intelligence to:
+- **VASP**: `INCAR`, `POSCAR`, `CONTCAR`, `KPOINTS`, `POTCAR`
+- **CRYSTAL23**: `.d12`
 
 ---
 
 ## ⚡ Quick Start
 
-### 1. Install Globally
+### 1. Install
 
 ```bash
-npm install -g vasp-language-server
+npm install -g dft-language-server
 ```
+
+This installs the `vasp-lsp` and `dft-lsp` CLI entrypoints.
 
 ### 2. Connect Your Editor (Neovim)
 
@@ -25,54 +29,45 @@ Add this to your `init.lua` (or use our [Detailed Neovim Guide](docs/NEOVIM.md))
 ```lua
 require'lspconfig'.vasp_ls.setup{
   cmd = { "vasp-lsp", "--stdio" },
-  filetypes = { "vasp" } -- Ensure you have filetype detection!
+  filetypes = { "vasp", "crystal" },
 }
 ```
 
-**That's it.** Open an `INCAR` file and enjoy immediate validation.
+**That's it.** Open an `INCAR` file or a `.d12` and enjoy immediate validation.
 
 ---
 
 ## 🚀 Features
 
-### Core Capabilities
+### VASP Support
 
-| Feature | INCAR | POSCAR | POTCAR | KPOINTS |
+| Feature | INCAR | POSCAR/CONTCAR | KPOINTS | POTCAR |
 | :--- | :---: | :---: | :---: | :---: |
-| **Strict Validation** | ✅ | ✅ | ✅ | ✅ |
-| **Hover Documentation** | ✅ | ✅ | - | ✅ |
-| **Autocomplete** | ✅ | - | - | ✅ |
+| **Validation** | ✅ | ✅ | ✅ | ✅ |
+| **Hover Docs** | ✅ | ✅ | ✅ | - |
+| **Completion** | ✅ | - | ✅ | - |
+| **Formatting** | ✅ | ✅ | ✅ | - |
 | **Quick Fixes** | ✅ | - | - | - |
-| **Symbol Outline** | ✅ | ✅ | - | - |
-| **Semantic Tokens** | ✅ | ✅ | - | ✅ |
+| **Symbols (Outline)** | ✅ | ✅ | - | - |
+| **Semantic Tokens** | ✅ | ✅ | ✅ | - |
 | **Folding** | ✅ | ✅ | - | - |
 
-### Advanced VASP Support <sup>(New in v1.0.0)</sup>
+### CRYSTAL23 Support
 
-Check out the [Advanced Configuration Guide](docs/ADVANCED_CONFIGURATION.md) for deep dives into:
+| Feature | `.d12` |
+| :--- | :---: |
+| **Validation** | ✅ |
+| **Hover Docs** | ✅ |
+| **Completion** | ✅ |
+| **Semantic Tokens** | ✅ |
 
-* **Scientific Precision**: Native support for VASP's flexible numeric formats (e.g., `1E-5`, `.5`, `10*0.0`).
-* **Expert Workflows**:
-  * **Hubbard U (LDA+U)**: Validates `LDAUL`, `LDAUU`, `LDAUJ` arrays.
-  * **Hybrid Functionals**: Full support for `HSE06`, `PBE0` with `HFSCREEN`/`AEXX`.
-  * **Van der Waals**: Validation for `IVDW` tags and DFT-D3/D4 methods.
-* **Cross-File Intelligence**: Checks `POTCAR` order against `POSCAR` species to prevent severe calculation crashes.
+### Advanced VASP Support
 
----
-
-## 📦 Installation
-
-**Prerequisites**: Node.js v18 or newer.
-
-```bash
-# Install via npm (Recommended)
-npm install -g vasp-language-server
-
-# Build from Source
-git clone https://github.com/TheFermiSea/vasp-language-server.git
-cd vasp-language-server
-npm install && npm run build
-```
+See [docs/ADVANCED_CONFIGURATION.md](docs/ADVANCED_CONFIGURATION.md) for deep dives into:
+- **Scientific precision**: `1E-5`, `.5`, `10*0.0`, Fortran `D` notation
+- **Expert workflows**: LDA+U, hybrid functionals, van der Waals
+- **Cross‑file intelligence**: POTCAR order checks vs POSCAR/CONTCAR
+- **Filetype overrides** for custom naming conventions
 
 ---
 
@@ -80,16 +75,20 @@ npm install && npm run build
 
 ### VS Code
 
-Use any generic LSP client extension (e.g., "Language Server Protocol (LSP) Client") and point it to the binary:
+Use any generic LSP client extension and point it at the server binary:
 
-* **Command**: `vasp-lsp`
-* **Args**: `["--stdio"]`
+- **Command**: `vasp-lsp`
+- **Args**: `["--stdio"]`
 
-We also provide a minimal VS Code client scaffold in `client/vscode` for packaging as a dedicated extension.
+A minimal VS Code client scaffold is included in `client/vscode` (optional).
 
 ### Neovim
 
-We strongly recommend using `nvim-lspconfig`. See [docs/NEOVIM.md](docs/NEOVIM.md) for a zero-friction setup with **LazyVim**.
+We strongly recommend `nvim-lspconfig`. See [docs/NEOVIM.md](docs/NEOVIM.md) for a streamlined setup.
+
+### Other Editors
+
+Any LSP client that can start a stdio server works (Zed, Emacs, Helix, etc.).
 
 ---
 
@@ -97,7 +96,7 @@ We strongly recommend using `nvim-lspconfig`. See [docs/NEOVIM.md](docs/NEOVIM.m
 
 The server exposes `workspace/executeCommand` for advanced integrations.
 
-### vasp.previewStructure
+### `vasp.previewStructure`
 
 Return a JSON representation of the parsed structure for the given document.
 
@@ -109,15 +108,42 @@ Return a JSON representation of the parsed structure for the given document.
 
 ---
 
+## ⚙️ Configuration
+
+The server accepts filetype overrides via LSP settings:
+
+```json
+{
+  "vasp": {
+    "fileTypeOverrides": {
+      "filenames": {
+        "INCAR.relax": "incar",
+        "POSCAR.start": "poscar"
+      },
+      "extensions": {
+        ".vasp": "poscar",
+        "kp": "kpoints"
+      }
+    }
+  }
+}
+```
+
+You can also pass `initializationOptions.fileTypeOverrides` in clients that do not support settings.
+
+---
+
 ## 🏗 Architecture & Contribution
 
 We are building a professional-grade tool for the scientific community.
 
-* **Written in TypeScript**: Strictly typed for reliability.
-* **Zero-Copy Parsing**: Optimized for large `POSCAR` files (100k+ atoms).
-* **Documentation-Driven**: Everything is cross-validated against the official [VASP Wiki](https://www.vasp.at/wiki).
+- **Typed, test‑driven**: TypeScript + Jest
+- **Performance‑focused**: Robust parsing for 100k+ atom POSCARs
+- **Documentation‑driven**: Cross‑validated against the official VASP Wiki
 
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) to join us.
+Start here:
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
 
 ---
 
@@ -125,12 +151,10 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) to join us.
 
 Runtime dependencies are purpose-driven:
 
-* **VASP Wiki scraping**: `axios`, `cheerio`, `mwn`
-* **HTML → Markdown**: `turndown`, `@joplin/turndown-plugin-gfm`
-* **Math rendering**: `mathjax-full`
-* **LSP protocol**: `vscode-languageserver`, `vscode-languageserver-textdocument`, `vscode-languageserver-types`
-
-Development tooling includes TypeScript, ESLint, Prettier, and Jest.
+- **VASP Wiki scraping**: `axios`, `cheerio`, `mwn`
+- **HTML → Markdown**: `turndown`, `@joplin/turndown-plugin-gfm`
+- **Math rendering**: `mathjax-full`
+- **LSP protocol**: `vscode-languageserver`, `vscode-languageserver-textdocument`, `vscode-languageserver-types`
 
 ---
 

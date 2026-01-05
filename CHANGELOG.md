@@ -2,31 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - Launch Release - 2025-12-25
+## [1.1.0] - 2026-01-05
 
 ### Added
 
-- **Modular Project Structure**: Refactored codebase to use a feature-based directory structure (`src/features/`).
-- **Semantic Tokens**: Rich syntax highlighting for VASP INCAR files.
-- **Folding Ranges**: Support for logical block folding in POSCAR (Lattices/Coordinates) and comments.
-- **Code Actions**: Automated "Quick Fix" suggestions for INCAR tag typos using Levenshtein distance.
-- **Document Symbols**: Comprehensive outline view for POSCAR/CONTCAR and INCAR files.
-- **Hover Documentation**: Integrated VASP Wiki documentation for INCAR tags.
-- **Auto-completion**: Snippets for KPOINTS and tag suggestions for INCAR.
-- **Cross-file Linting**: POTCAR species order validation against POSCAR.
-- **GitHub Actions**: Continuous Integration pipeline for linting, building, and testing.
-
-### Fixed
-
-- Robust file URI to path conversion for cross-file validation.
-- Resolution of `@typescript-eslint/no-unused-vars` and prettier warnings.
-- Duplicate key errors in `package.json`.
-- Missing `build` script in `package.json`.
+- **CRYSTAL23 support** (`.d12`) with linting, hover, completion, and semantic tokens
+- **Formatting** for INCAR, POSCAR/CONTCAR, and KPOINTS
+- **Custom command** `vasp.previewStructure` for AST inspection
+- **Filetype overrides** via LSP settings and initialization options
+- **Release automation** on tag push (build, test, npm pack + GitHub Release)
 
 ### Changed
 
-- Refactored entry point to use a robust `LspServer` class-based architecture.
-- Updated documentation with specialized guides for Neovim setup.
+- **Document cache** eviction upgraded to LRU
+- **KPOINTS semantic tokens** now respect explicit vs automatic sections
+- **POTCAR validation** falls back to CONTCAR when POSCAR is missing
+- Documentation refreshed across user and contributor guides
+
+### Fixed
+
+- Diagnostic consistency across POSCAR parsing
+- Stress‑test thresholds for large POSCAR files in local environments
+
+## [1.0.0] - 2025-12-25
+
+### Added
+
+- **Modular Project Structure**: Feature-based organization (`src/features/`)
+- **Semantic Tokens**: Rich highlighting for VASP INCAR files
+- **Folding Ranges**: POSCAR lattice/coordinate folding + comments
+- **Code Actions**: Quick fixes for INCAR tag typos
+- **Document Symbols**: Outline view for POSCAR/CONTCAR + INCAR
+- **Hover Documentation**: VASP Wiki tag docs
+- **Auto-completion**: KPOINTS snippets + INCAR tag suggestions
+- **Cross-file Linting**: POTCAR order validation vs POSCAR
+- **CI Pipeline**: Lint, build, and test in GitHub Actions
+
+### Fixed
+
+- File URI → path conversion for cross-file validation
+- ESLint and Prettier warnings
+- Duplicate key errors in `package.json`
+- Missing build script in `package.json`
+
+### Changed
+
+- Refactored entry point into a class-based `LspServer`
+- Documentation updates with Neovim setup guide
 
 ---
 *Generated for the VASP Language Server Launch*
