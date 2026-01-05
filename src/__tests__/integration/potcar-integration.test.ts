@@ -6,6 +6,18 @@ describe('POTCAR Integration', () => {
     let buffer = '';
     const fixtureDir = path.join(__dirname, '../../../test/fixtures/potcar_check');
 
+    type JsonRpcMessage = {
+        jsonrpc?: string;
+        id?: number | string;
+        method?: string;
+        params?: Record<string, unknown>;
+    };
+
+    type PublishDiagnosticsParams = {
+        uri: string;
+        diagnostics: Array<{ message: string }>;
+    };
+
     beforeEach(() => {
         const serverPath = path.join(__dirname, '../../../out/server.js');
         server = spawn('node', [serverPath, '--stdio']);
@@ -24,13 +36,13 @@ describe('POTCAR Integration', () => {
         }
     });
 
-    function send(msg: any) {
+    function send(msg: JsonRpcMessage) {
         const str = JSON.stringify(msg);
         const packet = `Content-Length: ${Buffer.byteLength(str, 'utf-8')}\r\n\r\n${str}`;
         server.stdin.write(packet);
     }
 
-    async function waitForMessage(predicate: (msg: any) => boolean): Promise<any> {
+    async function waitForMessage(predicate: (msg: JsonRpcMessage) => boolean): Promise<JsonRpcMessage> {
         return new Promise((resolve, reject) => {
             const checkInterval = setInterval(() => {
                 let offset = 0;
@@ -46,9 +58,10 @@ describe('POTCAR Integration', () => {
 
                     const jsonStr = buffer.slice(headerIndex + headerLen, headerIndex + headerLen + length);
                     try {
-                        const json = JSON.parse(jsonStr);
+                        const json = JSON.parse(jsonStr) as JsonRpcMessage;
                         if (predicate(json)) {
                             clearInterval(checkInterval);
+                            clearTimeout(timeoutId);
                             resolve(json);
                             return;
                         }
@@ -60,7 +73,7 @@ describe('POTCAR Integration', () => {
                 }
             }, 50);
 
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 clearInterval(checkInterval);
                 reject(new Error('Timeout waiting for message'));
             }, 5000);
@@ -99,8 +112,9 @@ describe('POTCAR Integration', () => {
         // Expect Diagnostics
         const diagMsg = await waitForMessage((m) => m.method === 'textDocument/publishDiagnostics');
 
-        expect(diagMsg.params.uri).toContain('POTCAR');
-        const messages = diagMsg.params.diagnostics.map((d: any) => d.message).join(' ');
+        const params = diagMsg.params as PublishDiagnosticsParams;
+        expect(params.uri).toContain('POTCAR');
+        const messages = params.diagnostics.map((d) => d.message).join(' ');
         // We expect "Mismatch: POSCAR expects 'Fe', but found 'O'"
         expect(messages).toContain("expects 'Fe'");
     });

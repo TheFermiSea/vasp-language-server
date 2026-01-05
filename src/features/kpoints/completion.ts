@@ -1,6 +1,15 @@
 import { CompletionItem, CompletionItemKind, Position } from 'vscode-languageserver/node';
 
+/**
+ * Provide KPOINTS completion items for the mode line.
+ *
+ * @param text - Full document text (unused; kept for signature parity).
+ * @param position - Cursor position for completion context.
+ * @returns Completion items for KPOINTS mode and common snippets.
+ */
 export function getKpointsCompletions(text: string, position: Position): CompletionItem[] {
+    void text;
+
     // Only provide completions for the 3rd line (Index 2), which is the Mode.
     // Line 0: Comment
     // Line 1: Number of kpoints (0 for auto)

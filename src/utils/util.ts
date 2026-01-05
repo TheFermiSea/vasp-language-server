@@ -1,3 +1,5 @@
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
+
 /**
  * Counts the elements in an array until a condition is met.
  * Useful for finding the 'valid' part of a line before invalid data starts.
@@ -14,6 +16,45 @@ export function countUntil<T>(arr: Array<T>, condition: (val: T) => boolean): nu
     return count;
 }
 
+/**
+ * Build a Diagnostic object with a consistent default source/severity.
+ *
+ * @param range - Range where the diagnostic applies.
+ * @param message - Human-readable message for the user.
+ * @param severity - Severity level (default: Error).
+ * @param code - Optional diagnostic code identifier.
+ * @param source - Optional diagnostic source (default: vasp-lsp).
+ * @returns A populated Diagnostic object.
+ */
+export function createDiagnostic(
+    range: Range,
+    message: string,
+    severity: DiagnosticSeverity = DiagnosticSeverity.Error,
+    code?: string,
+    source: string = 'vasp-lsp'
+): Diagnostic {
+    const diagnostic: Diagnostic = {
+        range,
+        message,
+        severity,
+        source
+    };
+
+    if (code !== undefined) {
+        diagnostic.code = code;
+    }
+
+    return diagnostic;
+}
+
+/**
+ * Check whether a string matches a VASP-style numeric literal.
+ *
+ * Supports repetition prefixes (e.g. 5*1.2) and Fortran notation (e.g. 1.0D-3).
+ *
+ * @param str - Input string to validate.
+ * @returns True when the string is a valid VASP numeric literal.
+ */
 export function isNumber(str: string): boolean {
     // Standard VASP number: optionally starts with "N*" repetition factor.
     // e.g., 5*1.2, 10*0, -1.2e-5, .5
@@ -43,6 +84,10 @@ export function isLetters(str: string): boolean {
 
 /**
  * Computes the Levenshtein distance between two strings.
+ *
+ * @param a - First string.
+ * @param b - Second string.
+ * @returns The edit distance between the two strings.
  */
 export function levenshteinDistance(a: string, b: string): number {
     const matrix: number[][] = [];

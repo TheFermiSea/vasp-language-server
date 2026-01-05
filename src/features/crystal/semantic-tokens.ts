@@ -7,7 +7,10 @@ import { CrystalDocument, CrystalToken } from './parsing';
 import { TokenType, TokenModifier } from '../semantic-tokens-legend';
 
 /**
- * Generate semantic tokens for a CRYSTAL23 document
+ * Generate semantic tokens for a CRYSTAL23 document.
+ *
+ * @param document - Parsed CRYSTAL document.
+ * @returns Semantic tokens payload for the LSP response.
  */
 export function getCrystalSemanticTokens(document: CrystalDocument): { data: number[] } {
     const builder = new SemanticTokensBuilder();

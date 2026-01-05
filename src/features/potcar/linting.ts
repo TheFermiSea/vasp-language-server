@@ -1,5 +1,6 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
+import { createDiagnostic } from '../../utils/util';
 import { parsePotcar } from './parsing';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
@@ -8,17 +9,22 @@ import { logger } from '../../utils/logger';
 
 /**
  * Validates POTCAR consistency with POSCAR.
+ *
+ * @param document - LSP text document for a POTCAR file.
+ * @returns Diagnostics describing POTCAR/POSCAR mismatches.
  */
 export async function validatePotcar(document: TextDocument): Promise<Diagnostic[]> {
     const diagnostics: Diagnostic[] = [];
     const parsedPot = parsePotcar(document);
 
     if (parsedPot.elements.length === 0) {
-        diagnostics.push({
-            severity: DiagnosticSeverity.Warning,
-            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
-            message: 'No elements detected in POTCAR. Is this a valid VASP POTCAR?'
-        });
+        diagnostics.push(
+            createDiagnostic(
+                { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+                'No elements detected in POTCAR. Is this a valid VASP POTCAR?',
+                DiagnosticSeverity.Warning
+            )
+        );
         return diagnostics;
     }
 
@@ -53,27 +59,31 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
 
                     if (!pos) {
                         // POTCAR has more elements than POSCAR
-                        diagnostics.push({
-                            severity: DiagnosticSeverity.Warning,
-                            range: {
-                                start: { line: pot.line, character: 0 },
-                                end: { line: pot.line, character: pot.description.length }
-                            },
-                            message: `Extra potential for '${pot.symbol}' found in POTCAR but not in POSCAR.`
-                        });
+                        diagnostics.push(
+                            createDiagnostic(
+                                {
+                                    start: { line: pot.line, character: 0 },
+                                    end: { line: pot.line, character: pot.description.length }
+                                },
+                                `Extra potential for '${pot.symbol}' found in POTCAR but not in POSCAR.`,
+                                DiagnosticSeverity.Warning
+                            )
+                        );
                     } else if (!pot) {
                         // POSCAR has more elements
                         // We can't mark strict line in POTCAR as it ends.
                         // Add error to the last POTCAR element
                         const last = parsedPot.elements[parsedPot.elements.length - 1];
-                        diagnostics.push({
-                            severity: DiagnosticSeverity.Error,
-                            range: {
-                                start: { line: last.line, character: 0 },
-                                end: { line: last.line, character: last.description.length }
-                            },
-                            message: `Missing potential for POSCAR element '${pos}'. POTCAR ends prematurely.`
-                        });
+                        diagnostics.push(
+                            createDiagnostic(
+                                {
+                                    start: { line: last.line, character: 0 },
+                                    end: { line: last.line, character: last.description.length }
+                                },
+                                `Missing potential for POSCAR element '${pos}'. POTCAR ends prematurely.`,
+                                DiagnosticSeverity.Error
+                            )
+                        );
                     } else {
                         // Mismatch
                         // Handle "Fe_pv" vs "Fe": usually we just check if POSCAR symbol is a prefix or exact match
@@ -81,14 +91,16 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
                         // POSCAR: "Fe O", POTCAR must be Fe then O.
                         // But POTCAR might be "Fe_pv".
                         if (!pot.symbol.startsWith(pos) && !pos.startsWith(pot.symbol)) {
-                            diagnostics.push({
-                                severity: DiagnosticSeverity.Error,
-                                range: {
-                                    start: { line: pot.line, character: 0 },
-                                    end: { line: pot.line, character: pot.description.length }
-                                },
-                                message: `Mismatch: POSCAR expects '${pos}', but found '${pot.symbol}' in POTCAR.`
-                            });
+                            diagnostics.push(
+                                createDiagnostic(
+                                    {
+                                        start: { line: pot.line, character: 0 },
+                                        end: { line: pot.line, character: pot.description.length }
+                                    },
+                                    `Mismatch: POSCAR expects '${pos}', but found '${pot.symbol}' in POTCAR.`,
+                                    DiagnosticSeverity.Error
+                                )
+                            );
                         }
                     }
                 }

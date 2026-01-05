@@ -2,67 +2,74 @@
  * CRYSTAL23 input file validation
  */
 
-import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
 import { CrystalDocument, CrystalStatement } from './parsing';
 import { CRYSTAL_TAGS, CrystalTagDefinition } from '../../data/crystal-tags';
-import { levenshteinDistance } from '../../utils/util';
+import { createDiagnostic, levenshteinDistance } from '../../utils/util';
 
 /**
- * Validate a parsed CRYSTAL23 document
+ * Validate a parsed CRYSTAL23 document.
+ *
+ * @param document - Parsed CRYSTAL document.
+ * @returns Diagnostics for invalid geometry, keywords, or arguments.
  */
 export function validateCrystal(document: CrystalDocument): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
 
     // Add parse errors as diagnostics
     for (const error of document.errors) {
-        diagnostics.push({
-            range: error.range,
-            severity: error.severity === 'error' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
-            message: error.message,
-            source: 'crystal-lsp'
-        });
+        diagnostics.push(
+            createCrystalDiagnostic(
+                error.range,
+                error.message,
+                error.severity === 'error' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning
+            )
+        );
     }
 
     // Validate geometry type
     if (document.geometry.type === 'UNKNOWN') {
-        diagnostics.push({
-            range: document.geometry.typeToken?.range || {
-                start: { line: 1, character: 0 },
-                end: { line: 1, character: 10 }
-            },
-            severity: DiagnosticSeverity.Error,
-            message: 'Invalid geometry type. Expected: CRYSTAL, SLAB, POLYMER, MOLECULE, HELIX, or EXTERNAL',
-            source: 'crystal-lsp'
-        });
+        diagnostics.push(
+            createCrystalDiagnostic(
+                document.geometry.typeToken?.range || {
+                    start: { line: 1, character: 0 },
+                    end: { line: 1, character: 10 }
+                },
+                'Invalid geometry type. Expected: CRYSTAL, SLAB, POLYMER, MOLECULE, HELIX, or EXTERNAL',
+                DiagnosticSeverity.Error
+            )
+        );
     }
 
     // Validate space group for CRYSTAL type
     if (document.geometry.type === 'CRYSTAL' && document.geometry.spaceGroup !== undefined) {
         if (document.geometry.spaceGroup < 1 || document.geometry.spaceGroup > 230) {
-            diagnostics.push({
-                range: document.geometry.spaceGroupToken?.range || {
-                    start: { line: 2, character: 0 },
-                    end: { line: 2, character: 5 }
-                },
-                severity: DiagnosticSeverity.Error,
-                message: `Invalid space group: ${document.geometry.spaceGroup}. Must be between 1 and 230`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    document.geometry.spaceGroupToken?.range || {
+                        start: { line: 2, character: 0 },
+                        end: { line: 2, character: 5 }
+                    },
+                    `Invalid space group: ${document.geometry.spaceGroup}. Must be between 1 and 230`,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
     }
 
     // Validate layer group for SLAB type
     if (document.geometry.type === 'SLAB' && document.geometry.spaceGroup !== undefined) {
         if (document.geometry.spaceGroup < 1 || document.geometry.spaceGroup > 80) {
-            diagnostics.push({
-                range: document.geometry.spaceGroupToken?.range || {
-                    start: { line: 2, character: 0 },
-                    end: { line: 2, character: 5 }
-                },
-                severity: DiagnosticSeverity.Warning,
-                message: `Layer group ${document.geometry.spaceGroup} is outside typical range (1-80)`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    document.geometry.spaceGroupToken?.range || {
+                        start: { line: 2, character: 0 },
+                        end: { line: 2, character: 5 }
+                    },
+                    `Layer group ${document.geometry.spaceGroup} is outside typical range (1-80)`,
+                    DiagnosticSeverity.Warning
+                )
+            );
         }
     }
 
@@ -74,15 +81,17 @@ export function validateCrystal(document: CrystalDocument): Diagnostic[] {
         if (!tagDef) {
             // Unknown keyword - suggest similar ones
             const suggestion = findSimilarKeyword(keyword);
-            diagnostics.push({
-                range: statement.keyword.range,
-                severity: DiagnosticSeverity.Warning,
-                message: suggestion
+            const diagnostic = createCrystalDiagnostic(
+                statement.keyword.range,
+                suggestion
                     ? `Unknown keyword: ${keyword}. Did you mean '${suggestion}'?`
                     : `Unknown keyword: ${keyword}`,
-                source: 'crystal-lsp',
-                data: suggestion ? { suggestion } : undefined
-            });
+                DiagnosticSeverity.Warning
+            );
+            if (suggestion) {
+                diagnostic.data = { suggestion };
+            }
+            diagnostics.push(diagnostic);
             continue;
         }
 
@@ -102,6 +111,15 @@ export function validateCrystal(document: CrystalDocument): Diagnostic[] {
     return diagnostics;
 }
 
+function createCrystalDiagnostic(
+    range: Range,
+    message: string,
+    severity: DiagnosticSeverity,
+    code?: string
+): Diagnostic {
+    return createDiagnostic(range, message, severity, code, 'crystal-lsp');
+}
+
 function validateArgumentCount(
     statement: CrystalStatement,
     tagDef: CrystalTagDefinition,
@@ -112,20 +130,22 @@ function validateArgumentCount(
             // Variable argument count
             const [min, max] = tagDef.argCount;
             if (statement.values.length < min || statement.values.length > max) {
-                diagnostics.push({
-                    range: statement.range,
-                    severity: DiagnosticSeverity.Error,
-                    message: `${statement.keyword.text} expects ${min}-${max} arguments, got ${statement.values.length}`,
-                    source: 'crystal-lsp'
-                });
+                diagnostics.push(
+                    createCrystalDiagnostic(
+                        statement.range,
+                        `${statement.keyword.text} expects ${min}-${max} arguments, got ${statement.values.length}`,
+                        DiagnosticSeverity.Error
+                    )
+                );
             }
         } else if (statement.values.length !== tagDef.argCount) {
-            diagnostics.push({
-                range: statement.range,
-                severity: DiagnosticSeverity.Error,
-                message: `${statement.keyword.text} expects ${tagDef.argCount} argument(s), got ${statement.values.length}`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.range,
+                    `${statement.keyword.text} expects ${tagDef.argCount} argument(s), got ${statement.values.length}`,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
     }
 }
@@ -142,19 +162,21 @@ function validateArgumentTypes(
         const value = statement.values[i].text;
 
         if (expectedType === 'int' && !/^-?\d+$/.test(value)) {
-            diagnostics.push({
-                range: statement.values[i].range,
-                severity: DiagnosticSeverity.Error,
-                message: `Expected integer for argument ${i + 1}, got '${value}'`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.values[i].range,
+                    `Expected integer for argument ${i + 1}, got '${value}'`,
+                    DiagnosticSeverity.Error
+                )
+            );
         } else if (expectedType === 'float' && !/^-?\d*\.?\d+([eEdD][+-]?\d+)?$/.test(value)) {
-            diagnostics.push({
-                range: statement.values[i].range,
-                severity: DiagnosticSeverity.Error,
-                message: `Expected number for argument ${i + 1}, got '${value}'`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.values[i].range,
+                    `Expected number for argument ${i + 1}, got '${value}'`,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
     }
 }
@@ -164,6 +186,8 @@ function validateKeywordSpecific(
     tagDef: CrystalTagDefinition,
     diagnostics: Diagnostic[]
 ): void {
+    void tagDef;
+
     const keyword = statement.keyword.text.toUpperCase();
 
     // SHRINK validation - ensure reasonable grid sizes
@@ -172,40 +196,44 @@ function validateKeywordSpecific(
         const ip = parseInt(statement.values[1].text, 10);
 
         if (!isNaN(is) && is < 1) {
-            diagnostics.push({
-                range: statement.values[0].range,
-                severity: DiagnosticSeverity.Error,
-                message: `SHRINK IS must be >= 1, got ${is}`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.values[0].range,
+                    `SHRINK IS must be >= 1, got ${is}`,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
         if (!isNaN(ip) && ip < 1) {
-            diagnostics.push({
-                range: statement.values[1].range,
-                severity: DiagnosticSeverity.Error,
-                message: `SHRINK IP (Gilat net) must be >= 1, got ${ip}`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.values[1].range,
+                    `SHRINK IP (Gilat net) must be >= 1, got ${ip}`,
+                    DiagnosticSeverity.Error
+                )
+            );
         }
         if (!isNaN(is) && !isNaN(ip) && ip > is) {
-            diagnostics.push({
-                range: statement.range,
-                severity: DiagnosticSeverity.Warning,
-                message: `SHRINK IP (${ip}) is typically <= IS (${is})`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.range,
+                    `SHRINK IP (${ip}) is typically <= IS (${is})`,
+                    DiagnosticSeverity.Warning
+                )
+            );
         }
     }
 
     // TOLINTEG validation - 5 integers required
     if (keyword === 'TOLINTEG' && statement.values.length > 0) {
         if (statement.values.length !== 5) {
-            diagnostics.push({
-                range: statement.range,
-                severity: DiagnosticSeverity.Error,
-                message: `TOLINTEG requires exactly 5 integers (overlap/penetration thresholds)`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.range,
+                    'TOLINTEG requires exactly 5 integers (overlap/penetration thresholds)',
+                    DiagnosticSeverity.Error
+                )
+            );
         }
     }
 
@@ -213,12 +241,13 @@ function validateKeywordSpecific(
     if (keyword === 'FMIXING' && statement.values.length >= 1) {
         const pct = parseInt(statement.values[0].text, 10);
         if (!isNaN(pct) && (pct < 0 || pct > 100)) {
-            diagnostics.push({
-                range: statement.values[0].range,
-                severity: DiagnosticSeverity.Warning,
-                message: `FMIXING percentage should be 0-100, got ${pct}`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.values[0].range,
+                    `FMIXING percentage should be 0-100, got ${pct}`,
+                    DiagnosticSeverity.Warning
+                )
+            );
         }
     }
 
@@ -226,20 +255,18 @@ function validateKeywordSpecific(
     if (keyword === 'MAXCYCLE' && statement.values.length >= 1) {
         const cycles = parseInt(statement.values[0].text, 10);
         if (!isNaN(cycles) && cycles < 1) {
-            diagnostics.push({
-                range: statement.values[0].range,
-                severity: DiagnosticSeverity.Error,
-                message: `MAXCYCLE must be >= 1`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(statement.values[0].range, 'MAXCYCLE must be >= 1', DiagnosticSeverity.Error)
+            );
         }
         if (!isNaN(cycles) && cycles > 500) {
-            diagnostics.push({
-                range: statement.values[0].range,
-                severity: DiagnosticSeverity.Warning,
-                message: `MAXCYCLE=${cycles} is unusually high. SCF issues may need different approach`,
-                source: 'crystal-lsp'
-            });
+            diagnostics.push(
+                createCrystalDiagnostic(
+                    statement.values[0].range,
+                    `MAXCYCLE=${cycles} is unusually high. SCF issues may need different approach`,
+                    DiagnosticSeverity.Warning
+                )
+            );
         }
     }
 }
@@ -249,26 +276,28 @@ function validateRequiredKeywords(document: CrystalDocument, diagnostics: Diagno
 
     // SHRINK is almost always required
     if (!keywords.has('SHRINK') && document.geometry.type !== 'MOLECULE') {
-        diagnostics.push({
-            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-            severity: DiagnosticSeverity.Warning,
-            message: 'SHRINK keyword not found. K-point sampling is typically required for periodic systems',
-            source: 'crystal-lsp'
-        });
+        diagnostics.push(
+            createCrystalDiagnostic(
+                { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+                'SHRINK keyword not found. K-point sampling is typically required for periodic systems',
+                DiagnosticSeverity.Warning
+            )
+        );
     }
 
     // Check END keywords balance
     const endCount = document.allTokens.filter((t) => t.type === 'end').length;
     if (endCount < 1) {
-        diagnostics.push({
-            range: {
-                start: { line: document.lines.length - 1, character: 0 },
-                end: { line: document.lines.length - 1, character: 1 }
-            },
-            severity: DiagnosticSeverity.Warning,
-            message: 'Missing END keyword. CRYSTAL23 input typically ends with END',
-            source: 'crystal-lsp'
-        });
+        diagnostics.push(
+            createCrystalDiagnostic(
+                {
+                    start: { line: document.lines.length - 1, character: 0 },
+                    end: { line: document.lines.length - 1, character: 1 }
+                },
+                'Missing END keyword. CRYSTAL23 input typically ends with END',
+                DiagnosticSeverity.Warning
+            )
+        );
     }
 }
 

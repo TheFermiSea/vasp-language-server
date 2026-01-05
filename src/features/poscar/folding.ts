@@ -1,6 +1,13 @@
 import { FoldingRange, FoldingRangeKind } from 'vscode-languageserver/node';
 import { PoscarLine } from './parsing';
 
+/**
+ * Compute folding ranges for POSCAR documents.
+ *
+ * @param lines - Raw text lines for the POSCAR document.
+ * @param poscarData - Optional parsed POSCAR line metadata.
+ * @returns Folding ranges for lattice vectors and coordinate blocks.
+ */
 export function getFoldingRanges(lines: string[], poscarData?: PoscarLine[]): FoldingRange[] {
     const ranges: FoldingRange[] = [];
     if (lines.length < 5) return ranges;

@@ -1,14 +1,17 @@
 import { Range, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { countUntil, isNumber, isInteger, isLetters } from '../../utils/util';
+import { createRange, splitLines, tokenizeLineByWhitespace } from '../../core/parser-utils';
+import { poscarTokenTypes } from '../../types/tokens';
+import type { PoscarToken, PoscarTokenType } from '../../types/tokens';
 
 /**
  * Enumeration of all possible token types in a POSCAR file.
  * Used for syntax highlighting (in future) and linting.
  */
-export const tokenTypes = ['comment', 'string', 'number', 'constant', 'invalid'] as const;
+export const tokenTypes = poscarTokenTypes;
 
-type TokenType = (typeof tokenTypes)[number];
+export type TokenType = PoscarTokenType;
 
 /**
  * Enumeration of the different logical blocks/lines found in a POSCAR file.
@@ -65,11 +68,7 @@ export interface PoscarDocument {
 /**
  * A single lexical token (e.g., a number, a keyword, a comment).
  */
-export interface Token {
-    type?: TokenType;
-    range: Range;
-    text: string;
-}
+export type Token = PoscarToken;
 
 /**
  * Signature for a function that parses a raw text line into tokens.
@@ -208,38 +207,7 @@ function tokenizeConstLine(line: LSPTextLine, test?: RegExp): Token[] {
  * captures location info (Ranges) for each token.
  */
 function tokenizeLine(line: LSPTextLine): Token[] {
-    // Regex explanation:
-    // ^(\\s*)   -> Match leading whitespace (Group 1)
-    // (\\S+)    -> Match a non-whitespace sequence (The token) (Group 2)
-    // (.*)$     -> Match everything else (Remainder) (Group 3)
-    const matcher = /^(\s*)(\S+)(.*)$/;
-    const tokens: Token[] = [];
-    let offset = 0;
-
-    // Iteratively peel off tokens from the start of the string
-    let matches = line.text.match(matcher);
-
-    while (matches) {
-        // matches[1].length is the space before the token
-        // matches[2].length is the token itself
-        tokens.push({
-            range: Range.create(
-                line.lineNumber,
-                offset + matches[1].length,
-                line.lineNumber,
-                offset + matches[1].length + matches[2].length
-            ),
-            text: matches[2]
-        });
-
-        // Advance offset past the parsed token
-        offset += matches[1].length + matches[2].length;
-
-        // Recurse on the remainder of the line (matches[3])
-        matches = matches[3].match(matcher);
-    }
-
-    return tokens;
+    return tokenizeLineByWhitespace(line.text, line.lineNumber).map((token) => ({ ...token }));
 }
 
 /**
@@ -263,13 +231,13 @@ function getNumAtoms(tokens: Token[]): number {
  */
 function getDocumentLines(document: TextDocument): LSPTextLine[] {
     const text = document.getText();
-    const rawLines = text.split(/\r?\n/);
+    const rawLines = splitLines(text);
     return rawLines.map((lineText, i) => {
         const firstNonWhitespace = lineText.search(/\S/);
         return {
             text: lineText,
             lineNumber: i,
-            range: Range.create(i, 0, i, lineText.length),
+            range: createRange(i, 0, lineText.length),
             rangeIncludingLineBreak: Range.create(i, 0, i + 1, 0), // Approximation
             firstNonWhitespaceCharacterIndex: firstNonWhitespace === -1 ? lineText.length : firstNonWhitespace,
             isEmptyOrWhitespace: firstNonWhitespace === -1
@@ -300,6 +268,12 @@ function createDiagnostic(
  *
  * @param document - The full text document.
  * @returns Parsed POSCAR document.
+ */
+/**
+ * Parse a POSCAR/CONTCAR document into structured lines and diagnostics.
+ *
+ * @param document - LSP text document for a POSCAR/CONTCAR file.
+ * @returns Parsed POSCAR document containing line metadata and diagnostics.
  */
 export function parsePoscar(document: TextDocument): PoscarDocument {
     const poscarLines: PoscarLine[] = [];
@@ -510,143 +484,143 @@ function validateTokens(type: PoscarBlockType, tokens: Token[], line: LSPTextLin
             const token = tokens[i];
             if (token.type !== 'invalid') continue;
 
-        // Generate context-aware error messages
-        switch (type) {
-            case 'scaling':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid scaling factor '${token.text}'. Expected a positive number (e.g., 1.0). Negative values trigger volume calculation mode.`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
-
-            case 'lattice':
-            case 'lattVelocitiesVels':
-            case 'lattVelocitiesLatt':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid vector component '${token.text}' at position ${i + 1}. Expected a numeric value (e.g., 3.5, -1.2, 0.0).`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
-
-            case 'speciesNames':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid species name '${token.text}'. Species names must contain only letters (e.g., 'Fe', 'O', 'Si'). Numbers or symbols are not allowed.`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
-
-            case 'numAtoms':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid atom count '${token.text}'. Expected a positive integer. Ensure counts match the order of species names.`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
-
-            case 'positions':
-            case 'velocities':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid coordinate '${token.text}' at position ${i + 1}. Expected a numeric value. For Direct coordinates, values are typically between 0 and 1.`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
-
-            case 'positionsSelDyn':
-                if (i < 3) {
+            // Generate context-aware error messages
+            switch (type) {
+                case 'scaling':
                     diagnostics.push(
                         createDiagnostic(
                             token.range.start.line,
                             token.range.start.character,
                             token.range.end.character,
-                            `Line ${lineNum}: Invalid coordinate '${token.text}' at position ${i + 1}. Expected a numeric value for ${['x', 'y', 'z'][i]} coordinate.`,
+                            `Line ${lineNum}: Invalid scaling factor '${token.text}'. Expected a positive number (e.g., 1.0). Negative values trigger volume calculation mode.`,
                             DiagnosticSeverity.Error
                         )
                     );
-                } else if (i < 6) {
+                    break;
+
+                case 'lattice':
+                case 'lattVelocitiesVels':
+                case 'lattVelocitiesLatt':
                     diagnostics.push(
                         createDiagnostic(
                             token.range.start.line,
                             token.range.start.character,
                             token.range.end.character,
-                            `Line ${lineNum}: Invalid selective dynamics flag '${token.text}' at position ${i + 1}. Expected 'T' (movable) or 'F' (fixed) for ${['x', 'y', 'z'][i - 3]} direction.`,
+                            `Line ${lineNum}: Invalid vector component '${token.text}' at position ${i + 1}. Expected a numeric value (e.g., 3.5, -1.2, 0.0).`,
                             DiagnosticSeverity.Error
                         )
                     );
-                }
-                break;
+                    break;
 
-            case 'selDynamics':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid selective dynamics keyword. Expected line starting with 'S' or 's' (e.g., 'Selective dynamics').`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
+                case 'speciesNames':
+                    diagnostics.push(
+                        createDiagnostic(
+                            token.range.start.line,
+                            token.range.start.character,
+                            token.range.end.character,
+                            `Line ${lineNum}: Invalid species name '${token.text}'. Species names must contain only letters (e.g., 'Fe', 'O', 'Si'). Numbers or symbols are not allowed.`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
+                    break;
 
-            case 'positionMode':
-            case 'velocityMode':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid coordinate mode '${token.text}'. Expected 'Direct' (fractional coordinates) or 'Cartesian' (Angstrom coordinates).`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
+                case 'numAtoms':
+                    diagnostics.push(
+                        createDiagnostic(
+                            token.range.start.line,
+                            token.range.start.character,
+                            token.range.end.character,
+                            `Line ${lineNum}: Invalid atom count '${token.text}'. Expected a positive integer. Ensure counts match the order of species names.`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
+                    break;
 
-            case 'lattVelocitiesState':
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid lattice velocity state '${token.text}'. Expected an integer value.`,
-                        DiagnosticSeverity.Error
-                    )
-                );
-                break;
+                case 'positions':
+                case 'velocities':
+                    diagnostics.push(
+                        createDiagnostic(
+                            token.range.start.line,
+                            token.range.start.character,
+                            token.range.end.character,
+                            `Line ${lineNum}: Invalid coordinate '${token.text}' at position ${i + 1}. Expected a numeric value. For Direct coordinates, values are typically between 0 and 1.`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
+                    break;
 
-            default:
-                // Generic error for unknown types
-                diagnostics.push(
-                    createDiagnostic(
-                        token.range.start.line,
-                        token.range.start.character,
-                        token.range.end.character,
-                        `Line ${lineNum}: Invalid token '${token.text}'.`,
-                        DiagnosticSeverity.Error
-                    )
-                );
+                case 'positionsSelDyn':
+                    if (i < 3) {
+                        diagnostics.push(
+                            createDiagnostic(
+                                token.range.start.line,
+                                token.range.start.character,
+                                token.range.end.character,
+                                `Line ${lineNum}: Invalid coordinate '${token.text}' at position ${i + 1}. Expected a numeric value for ${['x', 'y', 'z'][i]} coordinate.`,
+                                DiagnosticSeverity.Error
+                            )
+                        );
+                    } else if (i < 6) {
+                        diagnostics.push(
+                            createDiagnostic(
+                                token.range.start.line,
+                                token.range.start.character,
+                                token.range.end.character,
+                                `Line ${lineNum}: Invalid selective dynamics flag '${token.text}' at position ${i + 1}. Expected 'T' (movable) or 'F' (fixed) for ${['x', 'y', 'z'][i - 3]} direction.`,
+                                DiagnosticSeverity.Error
+                            )
+                        );
+                    }
+                    break;
+
+                case 'selDynamics':
+                    diagnostics.push(
+                        createDiagnostic(
+                            token.range.start.line,
+                            token.range.start.character,
+                            token.range.end.character,
+                            `Line ${lineNum}: Invalid selective dynamics keyword. Expected line starting with 'S' or 's' (e.g., 'Selective dynamics').`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
+                    break;
+
+                case 'positionMode':
+                case 'velocityMode':
+                    diagnostics.push(
+                        createDiagnostic(
+                            token.range.start.line,
+                            token.range.start.character,
+                            token.range.end.character,
+                            `Line ${lineNum}: Invalid coordinate mode '${token.text}'. Expected 'Direct' (fractional coordinates) or 'Cartesian' (Angstrom coordinates).`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
+                    break;
+
+                case 'lattVelocitiesState':
+                    diagnostics.push(
+                        createDiagnostic(
+                            token.range.start.line,
+                            token.range.start.character,
+                            token.range.end.character,
+                            `Line ${lineNum}: Invalid lattice velocity state '${token.text}'. Expected an integer value.`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
+                    break;
+
+                default:
+                    // Generic error for unknown types
+                    diagnostics.push(
+                        createDiagnostic(
+                            token.range.start.line,
+                            token.range.start.character,
+                            token.range.end.character,
+                            `Line ${lineNum}: Invalid token '${token.text}'.`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
             }
         }
     }

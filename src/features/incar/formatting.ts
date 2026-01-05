@@ -22,6 +22,9 @@ interface FormattableLine {
  * Formats an INCAR document by aligning all tag = value assignments.
  * Uses the tokenized AST from parseIncar for robust parsing that correctly
  * handles edge cases like comments containing '=' characters.
+ *
+ * @param document - LSP text document for an INCAR file.
+ * @returns Text edits that align assignments without changing content.
  */
 export function formatIncar(document: TextDocument): TextEdit[] {
     const text = document.getText();

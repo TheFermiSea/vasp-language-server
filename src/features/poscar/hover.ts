@@ -1,6 +1,13 @@
 import { Hover, MarkupKind, Position } from 'vscode-languageserver/node';
 import { PoscarDocument } from './parsing';
 
+/**
+ * Provide hover documentation for POSCAR sections based on line type.
+ *
+ * @param parsed - Parsed POSCAR document.
+ * @param position - Hover position.
+ * @returns Hover payload or null if no hover applies.
+ */
 export function getPoscarHover(parsed: PoscarDocument, position: Position): Hover | null {
     // Find the line corresponding to the hover position
     const line = parsed.lines.find((l) => l.line.lineNumber === position.line);

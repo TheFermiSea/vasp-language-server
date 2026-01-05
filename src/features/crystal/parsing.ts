@@ -13,30 +13,9 @@
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range, Position } from 'vscode-languageserver-types';
-
-export type CrystalTokenType =
-    | 'title'
-    | 'geometry-type'
-    | 'space-group'
-    | 'lattice-param'
-    | 'atom-count'
-    | 'atom-line'
-    | 'keyword'
-    | 'block-start'
-    | 'block-end'
-    | 'basis-header'
-    | 'basis-data'
-    | 'number'
-    | 'comment'
-    | 'end'
-    | 'unknown';
-
-export interface CrystalToken {
-    type: CrystalTokenType;
-    text: string;
-    range: Range;
-    lineNumber: number;
-}
+import { createRange, splitLines } from '../../core/parser-utils';
+import type { CrystalToken, CrystalTokenType } from '../../types/tokens';
+export type { CrystalToken, CrystalTokenType } from '../../types/tokens';
 
 export interface CrystalStatement {
     keyword: CrystalToken;
@@ -164,11 +143,14 @@ const STANDALONE_KEYWORDS = [
 ];
 
 /**
- * Parse a CRYSTAL23 .d12 input file
+ * Parse a CRYSTAL23 .d12 input file into sections and tokens.
+ *
+ * @param document - LSP text document for a CRYSTAL23 input file.
+ * @returns Parsed CRYSTAL document with tokens, statements, and errors.
  */
 export function parseCrystal(document: TextDocument): CrystalDocument {
     const text = document.getText();
-    const lines = text.split(/\r?\n/);
+    const lines = splitLines(text);
     const allTokens: CrystalToken[] = [];
     const allStatements: CrystalStatement[] = [];
     const errors: ParseError[] = [];
@@ -391,15 +373,15 @@ function createToken(
     };
 }
 
-function createRange(startLine: number, startChar: number, endLine: number, endChar: number): Range {
-    return {
-        start: Position.create(startLine, startChar),
-        end: Position.create(endLine, endChar)
-    };
-}
-
 /**
  * Get the token at a given position
+ */
+/**
+ * Locate the token at a given position in the parsed CRYSTAL document.
+ *
+ * @param document - Parsed CRYSTAL document.
+ * @param position - LSP position to look up.
+ * @returns The token at the position, or undefined if none matches.
  */
 export function getTokenAtPosition(document: CrystalDocument, position: Position): CrystalToken | undefined {
     return document.allTokens.find((token) => isPositionInRange(position, token.range));

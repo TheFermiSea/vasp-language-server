@@ -31,8 +31,8 @@ describe('INCAR Parser', () => {
         const doc = createDoc('SYSTEM = Long name \\\n continued');
         const parsed = parseIncar(doc);
         expect(parsed.statements).toHaveLength(1);
-        expect(parsed.statements[0].values.map((t: any) => t.text).join(' ')).toContain('Long name');
-        expect(parsed.statements[0].values.map((t: any) => t.text).join(' ')).toContain('continued');
+        expect(parsed.statements[0].values.map((t) => t.text).join(' ')).toContain('Long name');
+        expect(parsed.statements[0].values.map((t) => t.text).join(' ')).toContain('continued');
     });
 
     test('handles empty files', () => {

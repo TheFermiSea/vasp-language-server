@@ -15,7 +15,7 @@ export default tseslint.config(
             ...prettierConfig.rules,
             "prettier/prettier": "warn",
             "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
-            "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-explicit-any": "error",
             "@typescript-eslint/explicit-module-boundary-types": "off",
             "eqeqeq": ["error", "always"]
         },

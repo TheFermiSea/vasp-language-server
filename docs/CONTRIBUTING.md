@@ -14,6 +14,29 @@ Thank you for your interest in contributing to the VASP Language Server! We aim 
 6. **Update Data**:
    - `npm run update-tags`: Fetch latest VASP tags from the official wiki.
 
+## Updating VASP Tags (VASP Wiki)
+
+The `npm run update-tags` command runs the VASP Wiki scraper in `src/tools/vasp-wiki.ts`.
+It fetches the latest INCAR tag definitions and writes them to `src/data/vasp-tags.ts`.
+
+**When to run:**
+- Before a new release
+- When a new VASP version is published
+- When users report missing or outdated tags
+
+**What it does:**
+1. Queries the VASP Wiki category pages for INCAR tag entries
+2. Parses each tag page for type, default, and description fields
+3. Regenerates `src/data/vasp-tags.ts`
+
+**Expected output:**
+- Console logs showing connection, page counts, and number of tags fetched
+- A refreshed `src/data/vasp-tags.ts` file in git status
+
+**Notes:**
+- The script is network dependent and will log errors if the wiki is unavailable.
+- Please be mindful of rate limits; avoid running it repeatedly in a tight loop.
+
 ## Project Structure
 
 We follow a modular, feature-based organization:

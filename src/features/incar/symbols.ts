@@ -5,6 +5,10 @@ import { IncarDocument, parseIncar } from './parsing';
 /**
  * Generates Document Symbols for INCAR files.
  * Maps every TAG = VALUE pair to a Variable symbol.
+ *
+ * @param document - LSP text document for an INCAR file.
+ * @param parsed - Optional pre-parsed INCAR document.
+ * @returns Document symbols for each INCAR tag assignment.
  */
 export function getIncarSymbols(document: TextDocument, parsed?: IncarDocument): DocumentSymbol[] {
     const symbols: DocumentSymbol[] = [];

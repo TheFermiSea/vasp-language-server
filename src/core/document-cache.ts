@@ -37,6 +37,12 @@ export class DocumentCache {
         this.maxSize = maxSize;
     }
 
+    /**
+     * Retrieve a cached structure for a document if the version matches.
+     *
+     * @param document - The document to look up in the cache.
+     * @returns The cached structure when present and up-to-date, otherwise undefined.
+     */
     public get(document: TextDocument): VaspStructure | undefined {
         const cached = this.cache.get(document.uri);
         if (cached && cached.version === document.version) {
@@ -45,6 +51,12 @@ export class DocumentCache {
         return undefined;
     }
 
+    /**
+     * Store a parsed structure in the cache and enforce FIFO eviction.
+     *
+     * @param document - The document providing the cache key and version.
+     * @param structure - Parsed document structure to cache.
+     */
     public set(document: TextDocument, structure: VaspStructure): void {
         const uri = document.uri;
 
@@ -66,6 +78,11 @@ export class DocumentCache {
         }
     }
 
+    /**
+     * Remove a document from the cache and eviction queue.
+     *
+     * @param uri - Document URI to remove.
+     */
     public delete(uri: string): void {
         this.cache.delete(uri);
         const index = this.order.indexOf(uri);

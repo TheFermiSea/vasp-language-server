@@ -1,5 +1,6 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
+import { splitLines } from '../../core/parser-utils';
 
 export interface KpointsDocument {
     comment: string;
@@ -11,9 +12,15 @@ export interface KpointsDocument {
     diagnostics: Diagnostic[];
 }
 
+/**
+ * Parse a KPOINTS document into a structured representation with diagnostics.
+ *
+ * @param document - LSP text document for a KPOINTS file.
+ * @returns Parsed KPOINTS document with grid/shift info and diagnostics.
+ */
 export function parseKpoints(document: TextDocument): KpointsDocument {
     const text = document.getText();
-    const lines = text.split(/\r?\n/);
+    const lines = splitLines(text);
     const diagnostics: Diagnostic[] = [];
 
     const data: KpointsDocument = {

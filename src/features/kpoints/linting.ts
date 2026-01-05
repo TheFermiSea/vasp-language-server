@@ -1,6 +1,13 @@
 import { KpointsDocument } from './parsing';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
+import { createDiagnostic } from '../../utils/util';
 
+/**
+ * Validate a parsed KPOINTS document and return diagnostics.
+ *
+ * @param data - Parsed KPOINTS document.
+ * @returns Array of diagnostics for invalid modes or grids.
+ */
 export function validateKpoints(data: KpointsDocument): Diagnostic[] {
     // Start with parser diagnostics
     const diagnostics: Diagnostic[] = [...data.diagnostics];
@@ -13,11 +20,13 @@ export function validateKpoints(data: KpointsDocument): Diagnostic[] {
         // Note: VASP is permissive, but usually M, G, L are used for auto-grids.
 
         if (!validModes.includes(firstChar)) {
-            diagnostics.push({
-                severity: DiagnosticSeverity.Warning,
-                range: { start: { line: 2, character: 0 }, end: { line: 2, character: data.mode.length } },
-                message: `Unknown KPOINTS mode '${data.mode}'. Common modes: Monkhorst-Pack, Gamma, Line-mode.`
-            });
+            diagnostics.push(
+                createDiagnostic(
+                    { start: { line: 2, character: 0 }, end: { line: 2, character: data.mode.length } },
+                    `Unknown KPOINTS mode '${data.mode}'. Common modes: Monkhorst-Pack, Gamma, Line-mode.`,
+                    DiagnosticSeverity.Warning
+                )
+            );
         }
     }
 
@@ -26,11 +35,13 @@ export function validateKpoints(data: KpointsDocument): Diagnostic[] {
         // Grid check
         if (data.grid.length === 3) {
             if (data.grid.some((v: number) => v <= 0)) {
-                diagnostics.push({
-                    severity: DiagnosticSeverity.Error,
-                    range: { start: { line: 3, character: 0 }, end: { line: 3, character: 10 } }, // Approx range
-                    message: 'Grid values must be positive integers.'
-                });
+                diagnostics.push(
+                    createDiagnostic(
+                        { start: { line: 3, character: 0 }, end: { line: 3, character: 10 } },
+                        'Grid values must be positive integers.',
+                        DiagnosticSeverity.Error
+                    )
+                );
             }
         } else if (data.mode.toUpperCase().startsWith('L')) {
             // Line-mode

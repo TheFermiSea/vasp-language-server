@@ -1,6 +1,12 @@
 import { SemanticTokensBuilder } from 'vscode-languageserver/node';
 import { tokenTypeIndices } from '../semantic-tokens-legend';
 
+/**
+ * Build semantic tokens for a KPOINTS document.
+ *
+ * @param text - Full document text.
+ * @returns Semantic tokens payload for the LSP response.
+ */
 export function getKpointsSemanticTokens(text: string): { data: number[] } {
     const builder = new SemanticTokensBuilder();
     const lines = text.split(/\r?\n/);

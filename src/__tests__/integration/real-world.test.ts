@@ -6,6 +6,22 @@ describe('Real World VASP Files', () => {
     let server: ChildProcessWithoutNullStreams;
     let buffer = '';
 
+    type JsonRpcMessage = {
+        jsonrpc?: string;
+        id?: number | string;
+        method?: string;
+        params?: Record<string, unknown>;
+    };
+
+    type DiagnosticMessage = {
+        message: string;
+    };
+
+    type PublishDiagnosticsParams = {
+        uri: string;
+        diagnostics: DiagnosticMessage[];
+    };
+
     beforeEach(() => {
         const serverPath = path.join(__dirname, '../../../out/server.js');
         server = spawn('node', [serverPath, '--stdio']);
@@ -24,13 +40,13 @@ describe('Real World VASP Files', () => {
         }
     });
 
-    function send(msg: any) {
+    function send(msg: JsonRpcMessage) {
         const str = JSON.stringify(msg);
         const packet = `Content-Length: ${Buffer.byteLength(str, 'utf-8')}\r\n\r\n${str}`;
         server.stdin.write(packet);
     }
 
-    async function waitForMessage(predicate: (msg: any) => boolean): Promise<any> {
+    async function waitForMessage(predicate: (msg: JsonRpcMessage) => boolean): Promise<JsonRpcMessage> {
         return new Promise((resolve, reject) => {
             const checkInterval = setInterval(() => {
                 let offset = 0;
@@ -46,9 +62,10 @@ describe('Real World VASP Files', () => {
 
                     const jsonStr = buffer.slice(headerIndex + headerLen, headerIndex + headerLen + length);
                     try {
-                        const json = JSON.parse(jsonStr);
+                        const json = JSON.parse(jsonStr) as JsonRpcMessage;
                         if (predicate(json)) {
                             clearInterval(checkInterval);
+                            clearTimeout(timeoutId);
                             resolve(json);
                             return;
                         }
@@ -60,14 +77,14 @@ describe('Real World VASP Files', () => {
                 }
             }, 50);
 
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 clearInterval(checkInterval);
                 reject(new Error('Timeout waiting for message'));
             }, 3000);
         });
     }
 
-    async function validateFile(filePath: string): Promise<any[]> {
+    async function validateFile(filePath: string): Promise<DiagnosticMessage[]> {
         const content = fs.readFileSync(filePath, 'utf-8');
         const uri = `file://${filePath}`;
 
@@ -91,8 +108,11 @@ describe('Real World VASP Files', () => {
         });
 
         // Wait for Diagnostics
-        const msg = await waitForMessage((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === uri);
-        return msg.params.diagnostics;
+        const msg = await waitForMessage(
+            (m) => m.method === 'textDocument/publishDiagnostics' && (m.params as PublishDiagnosticsParams)?.uri === uri
+        );
+        const params = msg.params as PublishDiagnosticsParams;
+        return params.diagnostics;
     }
 
     test('Valid: Standard Relaxation (INCAR_RELAX)', async () => {
@@ -111,7 +131,7 @@ describe('Real World VASP Files', () => {
         );
         expect(diagnostics.length).toBeGreaterThan(0);
 
-        const messages = diagnostics.map((d: any) => d.message).join(' ');
+        const messages = diagnostics.map((d) => d.message).join(' ');
         expect(messages).toContain('expects a single value'); // ENCUT = 400 eV (parsed as two tokens)
         expect(messages).toContain('Expected integer'); // ISMEAR = Gaussian
         expect(messages).toContain('Expected integer'); // NCORE = Four

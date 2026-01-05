@@ -1,10 +1,13 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
 import { IncarDocument, IncarStatement } from './parsing';
 import { VASP_TAGS, TagDefinition } from '../../data/vasp-tags';
-import { isNumber, isInteger } from '../../utils/util';
+import { isNumber, isInteger, createDiagnostic } from '../../utils/util';
 
 /**
- * Validates a parsed INCAR document.
+ * Validate a parsed INCAR document and return diagnostics.
+ *
+ * @param doc - Parsed INCAR document.
+ * @returns Diagnostics describing invalid tags or values.
  */
 export function validateIncar(doc: IncarDocument): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
@@ -18,12 +21,13 @@ export function validateIncar(doc: IncarDocument): Diagnostic[] {
 
         // 2. Unknown Tag Check
         if (!definition) {
-            diagnostics.push({
-                message: `Unknown tag '${tagName}'. Check spelling or version compatibility.`,
-                range: stmt.tag.range,
-                severity: DiagnosticSeverity.Warning,
-                source: 'VASP'
-            });
+            diagnostics.push(
+                createDiagnostic(
+                    stmt.tag.range,
+                    `Unknown tag '${tagName}'. Check spelling or version compatibility.`,
+                    DiagnosticSeverity.Warning
+                )
+            );
             continue;
         }
 
@@ -36,12 +40,13 @@ export function validateIncar(doc: IncarDocument): Diagnostic[] {
         if (tagName === 'POTIM') {
             const val = parseFloat(stmt.values[0].text);
             if (!isNaN(val) && val > 3.0) {
-                diagnostics.push({
-                    message: `Warning: Time step is extremely fast (Presto). Please consider slowing down to Andante (0.5 - 2.0 fs) to ensure the ions can keep the beat.`,
-                    range: stmt.values[0].range,
-                    severity: DiagnosticSeverity.Warning,
-                    source: 'Maestro'
-                });
+                diagnostics.push(
+                    createDiagnostic(
+                        stmt.values[0].range,
+                        'Warning: Time step is extremely fast (Presto). Please consider slowing down to Andante (0.5 - 2.0 fs) to ensure the ions can keep the beat.',
+                        DiagnosticSeverity.Warning
+                    )
+                );
             }
         }
     }
@@ -60,21 +65,23 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
             if (stmt.values.length > 1) {
                 // Warn if multiple words provided for an Option type tag
                 // e.g. ALGO = Fast Damped (Invalid)
-                diagnostics.push({
-                    message: `Tag '${stmt.tag.text}' expects a single keyword option, but multiple were found.`,
-                    range: Range.create(stmt.values[1].range.start, stmt.values[stmt.values.length - 1].range.end),
-                    severity: DiagnosticSeverity.Warning,
-                    source: 'VASP'
-                });
+                diagnostics.push(
+                    createDiagnostic(
+                        Range.create(stmt.values[1].range.start, stmt.values[stmt.values.length - 1].range.end),
+                        `Tag '${stmt.tag.text}' expects a single keyword option, but multiple were found.`,
+                        DiagnosticSeverity.Warning
+                    )
+                );
             } else {
                 const found = def.options.find((opt) => opt.toLowerCase() === fullValue.toLowerCase());
                 if (!found) {
-                    diagnostics.push({
-                        message: `Invalid option '${fullValue}'. Allowed: ${def.options.join(', ')}`,
-                        range: stmt.values[0].range,
-                        severity: DiagnosticSeverity.Error,
-                        source: 'VASP'
-                    });
+                    diagnostics.push(
+                        createDiagnostic(
+                            stmt.values[0].range,
+                            `Invalid option '${fullValue}'. Allowed: ${def.options.join(', ')}`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
                 }
             }
         }
@@ -83,12 +90,13 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
 
     // For non-strings (int, float, bool), expect single value usually
     if (def.type !== 'array' && stmt.values.length > 1) {
-        diagnostics.push({
-            message: `Tag '${stmt.tag.text}' expects a single value, but multiple were found.`,
-            range: Range.create(stmt.values[1].range.start, stmt.values[stmt.values.length - 1].range.end),
-            severity: DiagnosticSeverity.Warning,
-            source: 'VASP'
-        });
+        diagnostics.push(
+            createDiagnostic(
+                Range.create(stmt.values[1].range.start, stmt.values[stmt.values.length - 1].range.end),
+                `Tag '${stmt.tag.text}' expects a single value, but multiple were found.`,
+                DiagnosticSeverity.Warning
+            )
+        );
     }
 
     // Check the first value (primary value)
@@ -98,22 +106,24 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
     switch (def.type) {
         case 'int':
             if (!isInteger(valText)) {
-                diagnostics.push({
-                    message: `Expected integer for '${stmt.tag.text}', found '${valText}'.`,
-                    range: valToken.range,
-                    severity: DiagnosticSeverity.Error,
-                    source: 'VASP'
-                });
+                diagnostics.push(
+                    createDiagnostic(
+                        valToken.range,
+                        `Expected integer for '${stmt.tag.text}', found '${valText}'.`,
+                        DiagnosticSeverity.Error
+                    )
+                );
             }
             break;
         case 'float':
             if (!isNumber(valText)) {
-                diagnostics.push({
-                    message: `Expected number for '${stmt.tag.text}', found '${valText}'.`,
-                    range: valToken.range,
-                    severity: DiagnosticSeverity.Error,
-                    source: 'VASP'
-                });
+                diagnostics.push(
+                    createDiagnostic(
+                        valToken.range,
+                        `Expected number for '${stmt.tag.text}', found '${valText}'.`,
+                        DiagnosticSeverity.Error
+                    )
+                );
             }
             break;
         case 'bool': {
@@ -128,12 +138,13 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
                 lower === 'false';
 
             if (!isBool) {
-                diagnostics.push({
-                    message: `Expected boolean (T/F/.TRUE./.FALSE.) for '${stmt.tag.text}', found '${valText}'.`,
-                    range: valToken.range,
-                    severity: DiagnosticSeverity.Error,
-                    source: 'VASP'
-                });
+                diagnostics.push(
+                    createDiagnostic(
+                        valToken.range,
+                        `Expected boolean (T/F/.TRUE./.FALSE.) for '${stmt.tag.text}', found '${valText}'.`,
+                        DiagnosticSeverity.Error
+                    )
+                );
             }
             break;
         }
@@ -142,12 +153,13 @@ function validateValueType(stmt: IncarStatement, def: TagDefinition, diagnostics
             // Usually arrays in VASP are numbers.
             for (const v of stmt.values) {
                 if (!isNumber(v.text)) {
-                    diagnostics.push({
-                        message: `Expected number in array for '${stmt.tag.text}', found '${v.text}'.`,
-                        range: v.range,
-                        severity: DiagnosticSeverity.Error,
-                        source: 'VASP'
-                    });
+                    diagnostics.push(
+                        createDiagnostic(
+                            v.range,
+                            `Expected number in array for '${stmt.tag.text}', found '${v.text}'.`,
+                            DiagnosticSeverity.Error
+                        )
+                    );
                 }
             }
             break;

@@ -1,6 +1,6 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { isNumber, isInteger, isLetters, countUntil } from '../../utils/util';
+import { isNumber, isInteger, isLetters, countUntil, createDiagnostic } from '../../utils/util';
 import { parsePoscar, PoscarBlockType, PoscarLine, PoscarDocument, Token } from './parsing';
 
 /**
@@ -33,8 +33,8 @@ export function validatePoscar(document: TextDocument, parsed?: PoscarDocument):
         if (countUntilComment(speciesNamesLine) !== countUntilComment(numAtomsLine)) {
             diagnostics.push(
                 createDiagnostic(
-                    'Number of atoms must be specified for each atomic species.',
                     numAtomsLine.line.range,
+                    'Number of atoms must be specified for each atomic species.',
                     DiagnosticSeverity.Error
                 )
             );
@@ -74,8 +74,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
 
             diagnostics.push(
                 createDiagnostic(
-                    'The number of scaling factors must be either 1 or 3.',
                     unionRange,
+                    'The number of scaling factors must be either 1 or 3.',
                     DiagnosticSeverity.Error
                 )
             );
@@ -85,8 +85,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
                 if (+t.text < 0) {
                     diagnostics.push(
                         createDiagnostic(
-                            'Individual scaling factors must be positive.',
                             t.range,
+                            'Individual scaling factors must be positive.',
                             DiagnosticSeverity.Error
                         )
                     );
@@ -102,7 +102,7 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
         // Validate that all species names are just letters
         const diagnostics = poscarLine.tokens
             .filter((t) => !isLetters(t.text))
-            .map((t) => createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error));
+            .map((t) => createDiagnostic(t.range, `Species name '${t.text}' is invalid.`, DiagnosticSeverity.Error));
         isEmptyLine(poscarLine, diagnostics);
         return diagnostics;
     },
@@ -121,8 +121,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
             .forEach((t) => {
                 diagnostics.push(
                     createDiagnostic(
-                        'Number of atoms needs to be a positive integer.',
                         t.range,
+                        'Number of atoms needs to be a positive integer.',
                         DiagnosticSeverity.Error
                     )
                 );
@@ -148,8 +148,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
             .forEach((t) => {
                 diagnostics.push(
                     createDiagnostic(
-                        "Selective dynamics flag must be either 'T' or 'F'.",
                         t.range,
+                        "Selective dynamics flag must be either 'T' or 'F'.",
                         DiagnosticSeverity.Error
                     )
                 );
@@ -159,8 +159,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
         if (tokens.length <= 3) {
             diagnostics.push(
                 createDiagnostic(
-                    'There must be 3 selective-dynamics flags. Too few given.',
                     Range.create(poscarLine.line.range.end, poscarLine.line.range.end),
+                    'There must be 3 selective-dynamics flags. Too few given.',
                     DiagnosticSeverity.Error
                 )
             );
@@ -170,8 +170,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
             const unionRange = Range.create(startToken.range.start, endToken.range.end);
             diagnostics.push(
                 createDiagnostic(
-                    'There must be 3 selective-dynamics flags. Too few given.',
                     unionRange,
+                    'There must be 3 selective-dynamics flags. Too few given.',
                     DiagnosticSeverity.Error
                 )
             );
@@ -187,8 +187,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
         if (!isEmptyLine(poscarLine, diagnostics) && !isInteger(tokens[0].text)) {
             diagnostics.push(
                 createDiagnostic(
-                    'Initialization state needs to be an integer',
                     tokens[0].range,
+                    'Initialization state needs to be an integer',
                     DiagnosticSeverity.Error
                 )
             );
@@ -203,18 +203,6 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
 };
 
 /**
- * Helper to create a standardized Diagnostic object.
- */
-function createDiagnostic(message: string, range: Range, severity: DiagnosticSeverity): Diagnostic {
-    return {
-        message: message,
-        range: range,
-        severity: severity,
-        source: 'VASP support'
-    };
-}
-
-/**
  * Checks if a line is completely empty (no tokens).
  * If so, optionally adds an Error diagnostic.
  */
@@ -222,8 +210,8 @@ function isEmptyLine(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): boolea
     if (poscarLine.tokens.length === 0) {
         diagnostics?.push(
             createDiagnostic(
-                'Line must not be empty.',
                 poscarLine.line.rangeIncludingLineBreak,
+                'Line must not be empty.',
                 DiagnosticSeverity.Error
             )
         );
@@ -248,9 +236,9 @@ function countUntilComment(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): 
 
         diagnostics.push(
             createDiagnostic(
+                range,
                 'The remainder of this line is ignored by VASP. ' +
                     "Consider placing a '#' or '!' in front to make the intention clearer.",
-                range,
                 DiagnosticSeverity.Warning
             )
         );
@@ -274,7 +262,7 @@ function lintVector(poscarLine: PoscarLine): Diagnostic[] {
     // Check first 3 tokens are numbers
     tokens.slice(0, 3).forEach((t) => {
         if (!isNumber(t.text)) {
-            diagnostics.push(createDiagnostic('Vector component must be a number.', t.range, DiagnosticSeverity.Error));
+            diagnostics.push(createDiagnostic(t.range, 'Vector component must be a number.', DiagnosticSeverity.Error));
         }
     });
 
@@ -285,7 +273,7 @@ function lintVector(poscarLine: PoscarLine): Diagnostic[] {
         const unionRange = Range.create(startToken.range.start, endToken.range.end);
 
         diagnostics.push(
-            createDiagnostic('Vector must consist of 3 numbers. Too few given.', unionRange, DiagnosticSeverity.Error)
+            createDiagnostic(unionRange, 'Vector must consist of 3 numbers. Too few given.', DiagnosticSeverity.Error)
         );
     }
     return diagnostics;
@@ -309,8 +297,8 @@ function lintConstLine(poscarLine: PoscarLine, content: string): Diagnostic[] {
     if (!regex.test(token.text)) {
         diagnostics.push(
             createDiagnostic(
-                `First non-space character on line must be '${startLower}' or '${startUpper}'.`,
                 token.range,
+                `First non-space character on line must be '${startLower}' or '${startUpper}'.`,
                 DiagnosticSeverity.Error
             )
         );
@@ -318,8 +306,8 @@ function lintConstLine(poscarLine: PoscarLine, content: string): Diagnostic[] {
         // Warn if it matches the letter but isn't the full expected word
         diagnostics.push(
             createDiagnostic(
-                `Consider specifying '${content}' to avoid potential mistakes.`,
                 token.range,
+                `Consider specifying '${content}' to avoid potential mistakes.`,
                 DiagnosticSeverity.Warning
             )
         );
@@ -336,8 +324,8 @@ function lintMode(poscarLine: PoscarLine, emptyMode?: string) {
         if (emptyMode) {
             diagnostics.push(
                 createDiagnostic(
-                    `Consider specifying '${emptyMode}' instead of an empty line to avoid potential mistakes.`,
                     poscarLine.line.rangeIncludingLineBreak,
+                    `Consider specifying '${emptyMode}' instead of an empty line to avoid potential mistakes.`,
                     DiagnosticSeverity.Warning
                 )
             );
@@ -351,8 +339,8 @@ function lintMode(poscarLine: PoscarLine, emptyMode?: string) {
             if (!'artesian'.startsWith(token.text.slice(1).toLowerCase())) {
                 diagnostics.push(
                     createDiagnostic(
-                        "Consider specifying 'cartesian' to avoid potential mistakes.",
                         token.range,
+                        "Consider specifying 'cartesian' to avoid potential mistakes.",
                         DiagnosticSeverity.Warning
                     )
                 );
@@ -361,8 +349,8 @@ function lintMode(poscarLine: PoscarLine, emptyMode?: string) {
             if (!'direct'.startsWith(token.text.toLowerCase())) {
                 diagnostics.push(
                     createDiagnostic(
-                        "Consider specifying 'direct' to avoid potential mistakes.",
                         token.range,
+                        "Consider specifying 'direct' to avoid potential mistakes.",
                         DiagnosticSeverity.Warning
                     )
                 );

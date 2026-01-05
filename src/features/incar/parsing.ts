@@ -1,16 +1,8 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Range, Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
-
-/**
- * Types of Tokens in INCAR.
- */
-export type IncarTokenType = 'tag' | 'equals' | 'value' | 'comment' | 'semicolon' | 'eol' | 'invalid';
-
-export interface IncarToken {
-    type: IncarTokenType;
-    text: string;
-    range: Range;
-}
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver-types';
+import { consumeWhitespace, createRange, splitLines } from '../../core/parser-utils';
+import type { IncarToken } from '../../types/tokens';
+export type { IncarToken, IncarTokenType } from '../../types/tokens';
 
 /**
  * Represents a parsed "Tag = Value" statement.
@@ -34,7 +26,10 @@ export interface IncarDocument {
 }
 
 /**
- * Parses an INCAR document.
+ * Parse an INCAR document into statements and tokens.
+ *
+ * @param document - LSP text document for an INCAR file.
+ * @returns Parsed INCAR document with statements and token list.
  */
 export function parseIncar(document: TextDocument): IncarDocument {
     const text = document.getText();
@@ -48,7 +43,7 @@ export function parseIncar(document: TextDocument): IncarDocument {
  */
 function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
     const tokens: IncarToken[] = [];
-    const lines = text.split(/\r?\n/);
+    const lines = splitLines(text);
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -69,9 +64,9 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
 
         while (offset < lineForParse.length) {
             // Skip whitespace
-            const whitespace = lineForParse.slice(offset).match(/^\s+/);
-            if (whitespace) {
-                offset += whitespace[0].length;
+            const nextOffset = consumeWhitespace(lineForParse, offset);
+            if (nextOffset !== offset) {
+                offset = nextOffset;
                 continue;
             }
             if (offset >= lineForParse.length) break;
@@ -84,7 +79,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                 tokens.push({
                     type: 'comment',
                     text: remaining,
-                    range: Range.create(i, offset, i, lineForParse.length)
+                    range: createRange(i, offset, lineForParse.length)
                 });
                 break; // Rest of line is comment
             }
@@ -94,7 +89,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                 tokens.push({
                     type: 'semicolon',
                     text: ';',
-                    range: Range.create(i, offset, i, offset + 1)
+                    range: createRange(i, offset, offset + 1)
                 });
                 offset++;
                 continue;
@@ -105,7 +100,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                 tokens.push({
                     type: 'equals',
                     text: '=',
-                    range: Range.create(i, offset, i, offset + 1)
+                    range: createRange(i, offset, offset + 1)
                 });
                 offset++;
                 continue;
@@ -127,7 +122,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                     tokens.push({
                         type: 'value',
                         text: match[0],
-                        range: Range.create(i, offset, i, offset + match[0].length)
+                        range: createRange(i, offset, offset + match[0].length)
                     });
                     offset += match[0].length;
                     continue;
@@ -136,7 +131,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                     tokens.push({
                         type: 'invalid',
                         text: remaining,
-                        range: Range.create(i, offset, i, lineForParse.length)
+                        range: createRange(i, offset, lineForParse.length)
                     });
                     // Note: The invalid token will be caught during statement grouping
                     // The error message is embedded in the token context
@@ -151,7 +146,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
                 tokens.push({
                     type: 'value',
                     text: word,
-                    range: Range.create(i, offset, i, offset + word.length)
+                    range: createRange(i, offset, offset + word.length)
                 });
                 offset += word.length;
             } else {
@@ -163,7 +158,7 @@ function tokenizeIncar(text: string, _document: TextDocument): IncarToken[] {
             tokens.push({
                 type: 'eol',
                 text: '\n',
-                range: Range.create(i, line.length, i, line.length)
+                range: createRange(i, line.length, line.length)
             });
         }
     }

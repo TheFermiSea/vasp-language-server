@@ -103,6 +103,19 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) to join us.
 
 ---
 
+## 📌 Dependency Notes
+
+Runtime dependencies are purpose-driven:
+
+* **VASP Wiki scraping**: `axios`, `cheerio`, `mwn`
+* **HTML → Markdown**: `turndown`, `@joplin/turndown-plugin-gfm`
+* **Math rendering**: `mathjax-full`
+* **LSP protocol**: `vscode-languageserver`, `vscode-languageserver-textdocument`, `vscode-languageserver-types`
+
+Development tooling includes TypeScript, ESLint, Prettier, and Jest.
+
+---
+
 ## 📄 License
 
 MIT © [TheFermiSea](https://github.com/TheFermiSea)

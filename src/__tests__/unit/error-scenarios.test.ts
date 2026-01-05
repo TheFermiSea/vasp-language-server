@@ -2,6 +2,8 @@ import { validatePoscar } from '../../features/poscar/linting';
 import { parsePoscar } from '../../features/poscar/parsing';
 import { validateIncar } from '../../features/incar/linting';
 import { parseIncar } from '../../features/incar/parsing';
+import { validateKpoints } from '../../features/kpoints/linting';
+import { parseKpoints } from '../../features/kpoints/parsing';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 describe('Error Scenarios - Malformed Input', () => {
@@ -21,6 +23,24 @@ describe('Error Scenarios - Malformed Input', () => {
             const diags = validateIncar(parsed);
             expect(parsed).toBeDefined();
             expect(diags).toHaveLength(0);
+        });
+
+        test('handles INCAR with only comments', () => {
+            const content = `# comment\n! another comment`;
+            const doc = TextDocument.create('file:///INCAR', 'vasp', 1, content);
+            const parsed = parseIncar(doc);
+            const diags = validateIncar(parsed);
+            expect(parsed).toBeDefined();
+            expect(diags).toHaveLength(0);
+        });
+
+        test('handles POSCAR with only comments', () => {
+            const content = `# comment\n! another comment`;
+            const doc = TextDocument.create('file:///POSCAR', 'vasp', 1, content);
+            const parsed = parsePoscar(doc);
+            const diags = validatePoscar(doc, parsed);
+            expect(parsed).toBeDefined();
+            expect(Array.isArray(diags)).toBe(true);
         });
 
         test('handles single line POSCAR', () => {
@@ -72,6 +92,7 @@ Direct`;
             const parsed = parsePoscar(doc);
             const diags = validatePoscar(doc, parsed);
             expect(parsed).toBeDefined();
+            expect(Array.isArray(diags)).toBe(true);
         });
     });
 
@@ -83,6 +104,26 @@ Direct`;
             const parsed = parseIncar(doc);
             const diags = validateIncar(parsed);
             expect(parsed).toBeDefined();
+            expect(Array.isArray(diags)).toBe(true);
+        });
+
+        test('handles INCAR with unclosed multi-line string', () => {
+            const content = `SYSTEM = "Unclosed string\nENCUT = 400`;
+            const doc = TextDocument.create('file:///INCAR', 'vasp', 1, content);
+            const parsed = parseIncar(doc);
+            const diags = validateIncar(parsed);
+            expect(parsed).toBeDefined();
+            expect(diags.some((d) => d.message.includes('Unclosed string'))).toBeTruthy();
+        });
+
+        test('handles INCAR with very long tag names', () => {
+            const tag = 'A'.repeat(200);
+            const content = `${tag} = 1`;
+            const doc = TextDocument.create('file:///INCAR', 'vasp', 1, content);
+            const parsed = parseIncar(doc);
+            const diags = validateIncar(parsed);
+            expect(parsed).toBeDefined();
+            expect(Array.isArray(diags)).toBe(true);
         });
 
         test('handles POSCAR with special characters', () => {
@@ -100,11 +141,37 @@ Direct
             expect(parsed).toBeDefined();
         });
 
+        test('handles POSCAR with NaN and Infinity coordinates', () => {
+            const content = `Title
+1.0
+3.0 0.0 0.0
+0.0 3.0 0.0
+0.0 0.0 3.0
+Fe
+1
+Direct
+NaN Infinity 0.0`;
+            const doc = TextDocument.create('file:///POSCAR', 'vasp', 1, content);
+            const parsed = parsePoscar(doc);
+            const diags = validatePoscar(doc, parsed);
+            expect(parsed).toBeDefined();
+            expect(diags.length).toBeGreaterThan(0);
+        });
+
         test('handles INCAR with Unicode characters', () => {
             const content = `SYSTEM = Test with émojis 🧪`;
             const doc = TextDocument.create('file:///INCAR', 'vasp', 1, content);
             const parsed = parseIncar(doc);
             expect(parsed).toBeDefined();
+        });
+
+        test('handles INCAR with BOM/RTL/zero-width characters', () => {
+            const content = `\uFEFFSYSTEM = value \u200B \u202E`;
+            const doc = TextDocument.create('file:///INCAR', 'vasp', 1, content);
+            const parsed = parseIncar(doc);
+            const diags = validateIncar(parsed);
+            expect(parsed).toBeDefined();
+            expect(Array.isArray(diags)).toBe(true);
         });
 
         test('handles scientific notation edge cases', () => {
@@ -154,6 +221,25 @@ Direct
             const parsed = parsePoscar(doc);
             const diags = validatePoscar(doc, parsed);
             expect(parsed).toBeDefined();
+            expect(Array.isArray(diags)).toBe(true);
+        });
+
+        test('handles POSCAR with incomplete selective dynamics flags', () => {
+            const content = `Title
+1.0
+3.0 0.0 0.0
+0.0 3.0 0.0
+0.0 0.0 3.0
+Fe
+1
+Selective dynamics
+Direct
+0.0 0.0 0.0 T F`;
+            const doc = TextDocument.create('file:///POSCAR', 'vasp', 1, content);
+            const parsed = parsePoscar(doc);
+            const diags = validatePoscar(doc, parsed);
+            expect(parsed).toBeDefined();
+            expect(diags.some((d) => d.message.includes('selective-dynamics'))).toBeTruthy();
         });
 
         test('handles INCAR with line continuation', () => {
@@ -162,6 +248,35 @@ Direct
             const doc = TextDocument.create('file:///INCAR', 'vasp', 1, content);
             const parsed = parseIncar(doc);
             expect(parsed).toBeDefined();
+        });
+
+        test('handles INCAR with deep line continuations', () => {
+            const content = `MAGMOM = 1 2 3 \\
+4 5 6 \\
+7 8 9`;
+            const doc = TextDocument.create('file:///INCAR', 'vasp', 1, content);
+            const parsed = parseIncar(doc);
+            expect(parsed).toBeDefined();
+        });
+    });
+
+    describe('KPOINTS edge cases', () => {
+        test('handles negative k-point counts', () => {
+            const content = `Comment\n-4\nGamma\n4 4 4\n0 0 0`;
+            const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, content);
+            const parsed = parseKpoints(doc);
+            const diags = validateKpoints(parsed);
+            expect(parsed).toBeDefined();
+            expect(diags.length).toBeGreaterThan(0);
+        });
+
+        test('handles invalid generation modes', () => {
+            const content = `Comment\n0\nZ\n4 4 4\n0 0 0`;
+            const doc = TextDocument.create('file:///KPOINTS', 'vasp', 1, content);
+            const parsed = parseKpoints(doc);
+            const diags = validateKpoints(parsed);
+            expect(parsed).toBeDefined();
+            expect(diags.length).toBeGreaterThan(0);
         });
     });
 });

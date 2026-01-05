@@ -1,7 +1,6 @@
 import { validatePoscar } from '../../features/poscar/linting';
 import { parsePoscar } from '../../features/poscar/parsing';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { DiagnosticSeverity } from 'vscode-languageserver-types';
 
 describe('POSCAR Linter', () => {
     function validate(content: string) {
@@ -160,5 +159,23 @@ Direct
 0.0 0.0 0.0`;
         const diags = validate(negative);
         expect(diags.some((d) => d.message.includes('positive'))).toBeTruthy();
+    });
+
+    test('validates lattice velocity state is integer', () => {
+        const invalid = `Title
+1.0
+3.0 0.0 0.0
+0.0 3.0 0.0
+0.0 0.0 3.0
+Fe
+1
+Direct
+0.0 0.0 0.0
+Lattice velocities and vectors
+notanint
+0.0 0.0 0.0
+0.0 0.0 0.0`;
+        const diags = validate(invalid);
+        expect(diags.some((d) => d.message.includes('Initialization state'))).toBeTruthy();
     });
 });

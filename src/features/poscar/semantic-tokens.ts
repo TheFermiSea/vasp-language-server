@@ -2,6 +2,12 @@ import { SemanticTokensBuilder } from 'vscode-languageserver/node';
 import { PoscarDocument } from './parsing';
 import { tokenTypeIndices, tokenModifierIndices } from '../semantic-tokens-legend';
 
+/**
+ * Build semantic tokens for a POSCAR document.
+ *
+ * @param parsed - Parsed POSCAR document.
+ * @returns Semantic tokens payload for the LSP response.
+ */
 export function getPoscarSemanticTokens(parsed: PoscarDocument): { data: number[] } {
     const builder = new SemanticTokensBuilder();
 

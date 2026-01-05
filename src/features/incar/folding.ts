@@ -1,6 +1,12 @@
 import { FoldingRange, FoldingRangeKind } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
+/**
+ * Compute folding ranges for INCAR section headers.
+ *
+ * @param document - LSP text document for an INCAR file.
+ * @returns Folding ranges representing comment-delimited sections.
+ */
 export function getIncarFoldingRanges(document: TextDocument): FoldingRange[] {
     const text = document.getText();
     const lines = text.split(/\r?\n/);

@@ -5,6 +5,10 @@ import { PoscarLine } from './parsing';
 /**
  * Generates Document Symbols for POSCAR files.
  * Uses heuristics to identify sections (Lattice, Species, Coordinates).
+ *
+ * @param document - LSP text document for a POSCAR/CONTCAR file.
+ * @param _parsed - Optional parsed data (unused but kept for signature consistency).
+ * @returns Document symbols for POSCAR sections.
  */
 export function getPoscarSymbols(document: TextDocument, _parsed?: PoscarLine[]): DocumentSymbol[] {
     const symbols: DocumentSymbol[] = [];

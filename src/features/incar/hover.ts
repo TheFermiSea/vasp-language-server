@@ -3,6 +3,13 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { parseIncar } from './parsing';
 import { VASP_TAGS } from '../../data/vasp-tags';
 
+/**
+ * Provide hover documentation for INCAR tags and values.
+ *
+ * @param document - LSP text document for an INCAR file.
+ * @param position - Hover position.
+ * @returns Hover payload with tag documentation, or null if none.
+ */
 export function getIncarHover(document: TextDocument, position: Position): Hover | null {
     const parsed = parseIncar(document);
     const line = position.line;

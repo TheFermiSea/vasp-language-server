@@ -3,6 +3,50 @@ import { HtmlToMarkdownConverter } from './html-to-markdown';
 import { IncarTag } from '../features/incar/tag';
 import { logger } from '../utils/logger';
 
+export type CategoryMembersResponse = {
+    query?: {
+        categorymembers?: Array<{ pageid: number }>;
+    };
+};
+
+export type WikiPage = {
+    title?: string;
+    text?: { '*': string };
+};
+
+export type PagesResponse = {
+    query?: {
+        pages?: Record<string, WikiPage>;
+    };
+};
+
+export type HtmlConverter = {
+    convert(html: string): string;
+};
+
+export function extractCategoryPageIds(response: CategoryMembersResponse): number[] {
+    return response.query?.categorymembers?.map((member) => member.pageid) ?? [];
+}
+
+export function parseIncarTagsFromPages(pages: Record<string, WikiPage>, converter: HtmlConverter): IncarTag[] {
+    const incarTags: IncarTag[] = [];
+
+    for (const pageId in pages) {
+        const page = pages[pageId];
+        const title = page.title;
+        const htmlContent = page.text?.['*'];
+
+        if (!title || !htmlContent) {
+            continue;
+        }
+
+        const markdown = converter.convert(htmlContent);
+        incarTags.push(IncarTag.fromMarkdown(markdown, title));
+    }
+
+    return incarTags;
+}
+
 /**
  * Fetches and parses INCAR tag documentation from the VASP Wiki using the MediaWiki API.
  *
@@ -19,59 +63,42 @@ export async function fetchIncarTags(baseUrl: string): Promise<IncarTag[]> {
     });
 
     const converter = new HtmlToMarkdownConverter();
-    const incarTags: IncarTag[] = [];
 
     try {
         // Fetch the list of pages in the 'INCAR_tags' category
-        const categoryMembers = await bot.request({
+        const categoryMembers = (await bot.request({
             action: 'query',
             list: 'categorymembers',
             cmtitle: 'Category:INCAR_tags',
             cmlimit: 5000
-        });
+        })) as CategoryMembersResponse;
 
-        if (!categoryMembers?.query?.categorymembers) {
+        const pageIds = extractCategoryPageIds(categoryMembers);
+        if (pageIds.length === 0) {
             logger.warn('No category members found for INCAR_tags');
             return [];
         }
 
-        // Extract page IDs
-        const pageIds = categoryMembers.query.categorymembers.map((member: any) => member.pageid);
-
         // Fetch the actual content (text) of these pages
-        const pagesData = await bot.request({
+        const pagesData = (await bot.request({
             action: 'query',
             pageids: pageIds.join('|'),
             prop: 'text'
-        });
+        })) as PagesResponse;
 
         if (!pagesData?.query?.pages) {
             logger.warn('No pages data returned');
             return [];
         }
 
-        const pages = pagesData.query.pages;
-
-        // Iterate through each page response
-        for (const pageId in pages) {
-            const page = pages[pageId];
-            const title = page.title;
-            const htmlContent = page.text['*'];
-
-            // For now, convert the raw HTML to Markdown.
-            const markdown = converter.convert(htmlContent);
-
-            // Create the IncarTag object
-            const tag = IncarTag.fromMarkdown(markdown, title);
-            incarTags.push(tag);
-        }
-
+        const incarTags = parseIncarTagsFromPages(pagesData.query.pages, converter);
         logger.info(`Fetched ${incarTags.length} INCAR tags from VASP Wiki.`);
+        return incarTags;
     } catch (error) {
         logger.error('Failed to fetch INCAR tags from wiki', error);
     }
 
-    return incarTags;
+    return [];
 }
 
 if (require.main === module) {

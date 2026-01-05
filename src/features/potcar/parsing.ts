@@ -44,6 +44,9 @@ const ELEMENT_SUFFIXES = ['_sv_GW', '_pv_GW', '_d_GW', '_GW', '_sv', '_pv', '_s'
  *   "Ti_sv_GW" -> "Ti"
  *   "O" -> "O"
  *   "Ge_d" -> "Ge"
+ *
+ * @param elementName - Raw element name from POTCAR metadata.
+ * @returns Base element symbol with known suffixes removed.
  */
 export function extractBaseElement(elementName: string): string {
     let base = elementName;
@@ -73,6 +76,9 @@ export function extractBaseElement(elementName: string): string {
  *   - US Fe 08Apr2002 (ultrasoft with date)
  *   - TITEL = PAW_PBE Fe 06Sep2000
  *   - TITEL = US Ti
+ *
+ * @param document - LSP text document for a POTCAR file.
+ * @returns Parsed POTCAR elements and diagnostics.
  */
 export function parsePotcar(document: TextDocument): ParsedPotcar {
     const text = document.getText();

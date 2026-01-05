@@ -4,7 +4,16 @@ import { IncarDocument } from './parsing';
 import { TokenType, TokenModifier } from '../semantic-tokens-legend';
 import { isNumber } from '../../utils/util';
 
+/**
+ * Build semantic tokens for an INCAR document.
+ *
+ * @param document - LSP text document (unused, kept for interface consistency).
+ * @param parsed - Parsed INCAR document.
+ * @returns Semantic tokens payload for the LSP response.
+ */
 export function getIncarSemanticTokens(document: TextDocument, parsed: IncarDocument): SemanticTokens {
+    void document;
+
     const builder = new SemanticTokensBuilder();
 
     // Collect all items to simplify sorting

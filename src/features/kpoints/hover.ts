@@ -1,5 +1,12 @@
 import { Hover, MarkupKind, Position } from 'vscode-languageserver/node';
 
+/**
+ * Provide hover text for KPOINTS files based on line position.
+ *
+ * @param text - Full document text.
+ * @param position - Hover position.
+ * @returns Hover payload or null when no hover is available.
+ */
 export function getKpointsHover(text: string, position: Position): Hover | null {
     const lines = text.split(/\r?\n/);
     if (position.line >= lines.length) return null;

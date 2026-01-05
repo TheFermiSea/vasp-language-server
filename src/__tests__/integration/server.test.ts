@@ -5,6 +5,20 @@ describe('LSP Server Integration', () => {
     let server: ChildProcessWithoutNullStreams;
     let buffer = '';
 
+    type JsonRpcMessage = {
+        jsonrpc?: string;
+        id?: number | string;
+        method?: string;
+        params?: Record<string, unknown>;
+        result?: unknown;
+        error?: unknown;
+    };
+
+    type PublishDiagnosticsParams = {
+        uri: string;
+        diagnostics: Array<{ message: string; range: Record<string, unknown> }>;
+    };
+
     beforeEach(() => {
         const serverPath = path.join(__dirname, '../../../out/server.js');
         server = spawn('node', [serverPath, '--stdio']);
@@ -24,13 +38,13 @@ describe('LSP Server Integration', () => {
         }
     });
 
-    function send(msg: any) {
+    function send(msg: JsonRpcMessage) {
         const str = JSON.stringify(msg);
         const packet = `Content-Length: ${Buffer.byteLength(str, 'utf-8')}\r\n\r\n${str}`;
         server.stdin.write(packet);
     }
 
-    async function waitForMessage(predicate: (msg: any) => boolean): Promise<any> {
+    async function waitForMessage(predicate: (msg: JsonRpcMessage) => boolean): Promise<JsonRpcMessage> {
         return new Promise((resolve, reject) => {
             const checkInterval = setInterval(() => {
                 let offset = 0;
@@ -46,9 +60,10 @@ describe('LSP Server Integration', () => {
 
                     const jsonStr = buffer.slice(headerIndex + headerLen, headerIndex + headerLen + length);
                     try {
-                        const json = JSON.parse(jsonStr);
+                        const json = JSON.parse(jsonStr) as JsonRpcMessage;
                         if (predicate(json)) {
                             clearInterval(checkInterval);
+                            clearTimeout(timeoutId);
                             resolve(json);
                             return;
                         }
@@ -60,7 +75,7 @@ describe('LSP Server Integration', () => {
                 }
             }, 50);
 
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 clearInterval(checkInterval);
                 reject(new Error('Timeout waiting for message'));
             }, 3000);
@@ -76,8 +91,9 @@ describe('LSP Server Integration', () => {
         });
 
         const msg = await waitForMessage((m) => m.id === 1);
-        expect(msg.result.capabilities.textDocumentSync).toBeDefined();
-        expect(msg.result.capabilities.hoverProvider).toBe(true);
+        const result = msg.result as { capabilities?: { textDocumentSync?: unknown; hoverProvider?: boolean } };
+        expect(result.capabilities?.textDocumentSync).toBeDefined();
+        expect(result.capabilities?.hoverProvider).toBe(true);
     });
 
     test('validates INCAR file on open', async () => {
@@ -109,9 +125,10 @@ describe('LSP Server Integration', () => {
 
         // Expect Diagnostics
         const diagMsg = await waitForMessage((m) => m.method === 'textDocument/publishDiagnostics');
-        expect(diagMsg.params.uri).toBe('file:///test/INCAR');
-        expect(diagMsg.params.diagnostics).toHaveLength(1);
-        expect(diagMsg.params.diagnostics[0].message).toContain('Expected number');
+        const diagParams = diagMsg.params as PublishDiagnosticsParams;
+        expect(diagParams.uri).toBe('file:///test/INCAR');
+        expect(diagParams.diagnostics).toHaveLength(1);
+        expect(diagParams.diagnostics[0].message).toContain('Expected number');
     });
 
     test('provides Document Symbols (Outline) for INCAR', async () => {
@@ -141,7 +158,9 @@ describe('LSP Server Integration', () => {
 
         // Wait for document to be processed (diagnostics published)
         await waitForMessage(
-            (m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === 'file:///test/INCAR_SYMBOLS'
+            (m) =>
+                m.method === 'textDocument/publishDiagnostics' &&
+                (m.params as PublishDiagnosticsParams | undefined)?.uri === 'file:///test/INCAR_SYMBOLS'
         );
 
         // Request Symbols
@@ -156,10 +175,11 @@ describe('LSP Server Integration', () => {
         if (msg.error) {
             console.error('LSP Error:', JSON.stringify(msg.error, null, 2));
         }
-        expect(msg.result).toBeDefined();
-        expect(msg.result).toHaveLength(2);
-        expect(msg.result[0].name).toBe('ENCUT');
-        expect(msg.result[1].name).toBe('ISMEAR');
+        const symbols = msg.result as Array<{ name: string }>;
+        expect(symbols).toBeDefined();
+        expect(symbols).toHaveLength(2);
+        expect(symbols[0].name).toBe('ENCUT');
+        expect(symbols[1].name).toBe('ISMEAR');
     });
 
     test('provides Code Actions for typos', async () => {
@@ -185,9 +205,12 @@ describe('LSP Server Integration', () => {
 
         // Wait for Diagnostic
         const diagMsg = await waitForMessage(
-            (m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === docUri
+            (m) =>
+                m.method === 'textDocument/publishDiagnostics' &&
+                (m.params as PublishDiagnosticsParams | undefined)?.uri === docUri
         );
-        const diagnostic = diagMsg.params.diagnostics[0];
+        const diagParams = diagMsg.params as PublishDiagnosticsParams;
+        const diagnostic = diagParams.diagnostics[0];
         expect(diagnostic.message).toContain("Unknown tag 'EMCUT'");
 
         // Request CodeAction
@@ -203,7 +226,7 @@ describe('LSP Server Integration', () => {
         });
 
         const actionMsg = await waitForMessage((m) => m.id === 2);
-        const actions = actionMsg.result;
+        const actions = actionMsg.result as Array<{ title: string; kind?: string }>;
         expect(actions.length).toBeGreaterThan(0);
         expect(actions[0].title).toBe("Change to 'ENCUT'");
         expect(actions[0].kind).toBe('quickfix');

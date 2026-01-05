@@ -6,7 +6,9 @@ import { CompletionItem, CompletionItemKind, InsertTextFormat } from 'vscode-lan
 import { CRYSTAL_TAGS, CrystalTagDefinition } from '../../data/crystal-tags';
 
 /**
- * Get completion items for CRYSTAL23 keywords
+ * Get completion items for CRYSTAL23 keywords.
+ *
+ * @returns Completion items derived from the CRYSTAL tag database.
  */
 export function getCrystalCompletions(): CompletionItem[] {
     const items: CompletionItem[] = [];
@@ -58,7 +60,10 @@ function getCompletionKind(def: CrystalTagDefinition): CompletionItemKind {
 }
 
 /**
- * Resolve additional details for a completion item
+ * Resolve additional details for a completion item.
+ *
+ * @param item - Completion item to resolve.
+ * @returns Completion item with rich documentation.
  */
 export function resolveCrystalCompletion(item: CompletionItem): CompletionItem {
     const def = CRYSTAL_TAGS[item.label];

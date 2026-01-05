@@ -8,9 +8,16 @@ import { CrystalDocument, getTokenAtPosition } from './parsing';
 import { CRYSTAL_TAGS } from '../../data/crystal-tags';
 
 /**
- * Get hover information for a position in a CRYSTAL23 document
+ * Get hover information for a position in a CRYSTAL23 document.
+ *
+ * @param document - LSP text document for a CRYSTAL file.
+ * @param parsed - Parsed CRYSTAL document.
+ * @param position - Hover position.
+ * @returns Hover payload with keyword documentation or null.
  */
 export function getCrystalHover(document: TextDocument, parsed: CrystalDocument, position: Position): Hover | null {
+    void document;
+
     const token = getTokenAtPosition(parsed, position);
     if (!token) return null;
 

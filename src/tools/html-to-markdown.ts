@@ -55,7 +55,8 @@ export class HtmlToMarkdownConverter {
         // Converts <span class="texhtml">...</span> to italics
         service.addRule('texhtml', {
             filter: function (node) {
-                return node.nodeName === 'SPAN' && (node as HTMLElement).classList.contains('texhtml');
+                const element = node as { classList?: { contains: (value: string) => boolean } };
+                return node.nodeName === 'SPAN' && !!element.classList?.contains('texhtml');
             },
             replacement: function (content) {
                 return '*' + content + '*';
