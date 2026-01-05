@@ -91,6 +91,22 @@ We strongly recommend using `nvim-lspconfig`. See [docs/NEOVIM.md](docs/NEOVIM.m
 
 ---
 
+## 🧰 Custom LSP Commands
+
+The server exposes `workspace/executeCommand` for advanced integrations.
+
+### vasp.previewStructure
+
+Return a JSON representation of the parsed structure for the given document.
+
+**Arguments:**
+- `{ uri: "file:///path/to/POSCAR" }` (or a plain URI string)
+
+**Result:**
+- `{ uri, fileType, structure }` where `structure` is the parsed AST cached by the server
+
+---
+
 ## 🏗 Architecture & Contribution
 
 We are building a professional-grade tool for the scientific community.

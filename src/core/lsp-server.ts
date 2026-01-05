@@ -14,7 +14,8 @@ import {
     CodeActionParams,
     SemanticTokensParams,
     DocumentSymbolParams,
-    FoldingRangeParams
+    FoldingRangeParams,
+    ExecuteCommandParams
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -31,6 +32,8 @@ import { PoscarFeatureProvider } from '../features/poscar/provider';
 import { KpointsFeatureProvider } from '../features/kpoints/provider';
 import { PotcarFeatureProvider } from '../features/potcar/provider';
 import { CrystalFeatureProvider } from '../features/crystal/provider';
+
+const COMMAND_PREVIEW_STRUCTURE = 'vasp.previewStructure';
 
 /**
  * Configuration options for the LSP server.
@@ -91,6 +94,7 @@ export class LspServer {
         this.connection.languages.semanticTokens.on(this.onSemanticTokens.bind(this));
         this.connection.onDocumentSymbol(this.onDocumentSymbol.bind(this));
         this.connection.onFoldingRanges(this.onFoldingRanges.bind(this));
+        this.connection.onExecuteCommand(this.onExecuteCommand.bind(this));
 
         this.documents.onDidClose((e) => {
             this.cache.delete(e.document.uri);
@@ -116,7 +120,10 @@ export class LspServer {
                     legend: semanticTokensLegend,
                     full: true
                 },
-                foldingRangeProvider: true
+                foldingRangeProvider: true,
+                executeCommandProvider: {
+                    commands: [COMMAND_PREVIEW_STRUCTURE]
+                }
             }
         };
     }
@@ -372,6 +379,69 @@ export class LspServer {
             logger.error('Folding ranges failed', error);
             return [];
         }
+    }
+
+    private onExecuteCommand(params: ExecuteCommandParams): unknown {
+        try {
+            if (params.command === COMMAND_PREVIEW_STRUCTURE) {
+                return this.handlePreviewStructure(params.arguments);
+            }
+            logger.warn(`Unknown command: ${params.command}`);
+        } catch (error) {
+            logger.error('Execute command failed', error);
+        }
+        return null;
+    }
+
+    private handlePreviewStructure(args?: unknown[]): unknown {
+        const uri = this.extractUriFromArgs(args);
+        if (!uri) {
+            return { error: 'Missing document URI for preview.' };
+        }
+
+        const document = this.documents.get(uri);
+        if (!document) {
+            return { error: `Document not open: ${uri}` };
+        }
+
+        const cached = this.cache.get(document);
+        if (cached) {
+            return { uri, fileType: cached.type, structure: cached };
+        }
+
+        const fileType = this.getFileType(uri);
+        const provider = this.providers.get(fileType);
+        if (!provider || !provider.parse) {
+            return { error: `Unsupported file type for preview: ${fileType}` };
+        }
+
+        const structure = provider.parse(document);
+        this.cache.set(document, structure);
+        return { uri, fileType: structure.type, structure };
+    }
+
+    private extractUriFromArgs(args?: unknown[]): string | undefined {
+        if (!args || args.length === 0) return undefined;
+        const first = args[0];
+
+        if (typeof first === 'string') {
+            return first;
+        }
+
+        if (first && typeof first === 'object') {
+            const record = first as {
+                uri?: unknown;
+                textDocument?: { uri?: unknown };
+            };
+            if (typeof record.uri === 'string') {
+                return record.uri;
+            }
+            if (record.textDocument && typeof record.textDocument.uri === 'string') {
+                return record.textDocument.uri;
+            }
+        }
+
+        return undefined;
     }
 
     /**
