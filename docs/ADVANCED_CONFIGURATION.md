@@ -51,3 +51,34 @@ VASP is unique in its number parsing. We support:
 ## 5. Strict Mode (Future)
 
 Currently, all strict validations are **always on**. In future versions, we may introduce a `.vasprc` or client-side setting to relax these checks for legacy files.
+
+## 6. Filetype Overrides
+
+If your VASP files use custom names or extensions, you can override detection via LSP settings.
+
+**Supported types:** `incar`, `poscar`, `kpoints`, `potcar`, `crystal`
+
+Example (Neovim `lspconfig`):
+
+```lua
+lspconfig.vasp_ls.setup{
+  settings = {
+    vasp = {
+      fileTypeOverrides = {
+        filenames = {
+          ["INCAR.relax"] = "incar",
+          ["POSCAR.start"] = "poscar",
+        },
+        extensions = {
+          [".vasp"] = "poscar",
+          ["kp"] = "kpoints",
+        },
+      },
+    },
+  },
+}
+```
+
+Notes:
+- Filename matches are case-insensitive.
+- Extensions may include or omit the leading dot.

@@ -15,9 +15,11 @@ import {
     SemanticTokensParams,
     DocumentSymbolParams,
     FoldingRangeParams,
-    ExecuteCommandParams
+    ExecuteCommandParams,
+    DidChangeConfigurationParams
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import * as path from 'path';
 
 import { resolveIncarCompletion } from '../features/incar/completion';
 import { resolveCrystalCompletion } from '../features/crystal/completion';
@@ -41,6 +43,13 @@ const COMMAND_PREVIEW_STRUCTURE = 'vasp.previewStructure';
 export interface LspServerOptions {
     /** Maximum number of documents to cache (default: 50) */
     cacheSize?: number;
+    /** Filetype override rules for filename/extension detection */
+    fileTypeOverrides?: FileTypeOverrideSettings;
+}
+
+export interface FileTypeOverrideSettings {
+    filenames?: Record<string, FileType>;
+    extensions?: Record<string, FileType>;
 }
 
 /**
@@ -51,6 +60,11 @@ export class LspServer {
     private documents: TextDocuments<TextDocument>;
     private cache: DocumentCache;
     private providers: Map<FileType, FeatureProvider>;
+    private fileTypeOverrides = {
+        filenames: new Map<string, FileType>(),
+        extensions: new Map<string, FileType>()
+    };
+    private hasConfigurationCapability = false;
 
     /**
      * Create a new language server instance with optional configuration.
@@ -68,6 +82,7 @@ export class LspServer {
             ['potcar', new PotcarFeatureProvider()],
             ['crystal', new CrystalFeatureProvider()]
         ]);
+        this.applyFileTypeOverrides(options.fileTypeOverrides);
 
         // Initialize logger with connection
         logger.initialize(this.connection);
@@ -95,6 +110,7 @@ export class LspServer {
         this.connection.onDocumentSymbol(this.onDocumentSymbol.bind(this));
         this.connection.onFoldingRanges(this.onFoldingRanges.bind(this));
         this.connection.onExecuteCommand(this.onExecuteCommand.bind(this));
+        this.connection.onDidChangeConfiguration(this.onDidChangeConfiguration.bind(this));
 
         this.documents.onDidClose((e) => {
             this.cache.delete(e.document.uri);
@@ -104,6 +120,13 @@ export class LspServer {
     }
 
     private onInitialize(_params: InitializeParams): InitializeResult {
+        this.hasConfigurationCapability = !!_params.capabilities.workspace?.configuration;
+        const initOverrides = (
+            _params.initializationOptions as { fileTypeOverrides?: FileTypeOverrideSettings } | undefined
+        )?.fileTypeOverrides;
+        if (initOverrides) {
+            this.applyFileTypeOverrides(initOverrides);
+        }
         logger.info('Initializing DFT Language Server (VASP + CRYSTAL23)...');
         return {
             capabilities: {
@@ -130,6 +153,9 @@ export class LspServer {
 
     private onInitialized(): void {
         logger.info('DFT Language Server Initialized (VASP + CRYSTAL23).');
+        if (this.hasConfigurationCapability) {
+            void this.refreshFileTypeOverrides();
+        }
     }
 
     /**
@@ -166,6 +192,19 @@ export class LspServer {
 
         // Normalize to uppercase for case-insensitive comparison
         const upperFileName = fileName.toUpperCase();
+        const extension = path.extname(fileName).toUpperCase();
+
+        const overrideByName = this.fileTypeOverrides.filenames.get(upperFileName);
+        if (overrideByName) {
+            return overrideByName;
+        }
+
+        if (extension) {
+            const overrideByExtension = this.fileTypeOverrides.extensions.get(extension);
+            if (overrideByExtension) {
+                return overrideByExtension;
+            }
+        }
 
         // CRYSTAL23 .d12 files - check extension case-insensitively
         if (upperFileName.endsWith('.D12')) {
@@ -242,6 +281,60 @@ export class LspServer {
         }
 
         return true;
+    }
+
+    private onDidChangeConfiguration(change: DidChangeConfigurationParams): void {
+        const settings = (change.settings as { vasp?: { fileTypeOverrides?: FileTypeOverrideSettings } } | undefined)
+            ?.vasp;
+        const overrides =
+            settings?.fileTypeOverrides ??
+            (change.settings as { fileTypeOverrides?: FileTypeOverrideSettings } | undefined)?.fileTypeOverrides;
+        this.applyFileTypeOverrides(overrides);
+    }
+
+    private async refreshFileTypeOverrides(): Promise<void> {
+        try {
+            const settings = (await this.connection.workspace.getConfiguration({
+                section: 'vasp'
+            })) as { fileTypeOverrides?: FileTypeOverrideSettings } | null;
+            this.applyFileTypeOverrides(settings?.fileTypeOverrides);
+        } catch (error) {
+            logger.warn(
+                `Failed to load VASP settings: ${error instanceof Error ? error.message : 'unknown error'}`
+            );
+        }
+    }
+
+    private applyFileTypeOverrides(overrides?: FileTypeOverrideSettings): void {
+        this.fileTypeOverrides.filenames.clear();
+        this.fileTypeOverrides.extensions.clear();
+
+        if (!overrides) return;
+
+        if (overrides.filenames) {
+            for (const [name, type] of Object.entries(overrides.filenames)) {
+                const normalizedType = this.normalizeFileType(type);
+                if (!normalizedType) continue;
+                this.fileTypeOverrides.filenames.set(name.toUpperCase(), normalizedType);
+            }
+        }
+
+        if (overrides.extensions) {
+            for (const [ext, type] of Object.entries(overrides.extensions)) {
+                const normalizedType = this.normalizeFileType(type);
+                if (!normalizedType) continue;
+                const normalizedExt = ext.startsWith('.') ? ext.toUpperCase() : `.${ext.toUpperCase()}`;
+                this.fileTypeOverrides.extensions.set(normalizedExt, normalizedType);
+            }
+        }
+    }
+
+    private normalizeFileType(type: string): FileType | null {
+        if (this.providers.has(type as FileType)) {
+            return type as FileType;
+        }
+        logger.warn(`Ignoring unknown file type override: '${type}'.`);
+        return null;
     }
 
     private async validateTextDocument(textDocument: TextDocument): Promise<void> {

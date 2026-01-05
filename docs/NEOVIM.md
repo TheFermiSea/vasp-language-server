@@ -112,3 +112,26 @@ end
 
 lspconfig.vasp_ls.setup{}
 ```
+
+### Optional: Filetype Overrides
+
+If your files use custom names or extensions, you can override detection with server settings:
+
+```lua
+lspconfig.vasp_ls.setup{
+  settings = {
+    vasp = {
+      fileTypeOverrides = {
+        filenames = {
+          ["INCAR.relax"] = "incar",
+          ["POSCAR.start"] = "poscar",
+        },
+        extensions = {
+          [".vasp"] = "poscar",
+          ["kp"] = "kpoints",
+        },
+      },
+    },
+  },
+}
+```
