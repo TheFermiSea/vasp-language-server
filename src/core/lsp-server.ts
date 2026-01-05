@@ -188,8 +188,8 @@ export class LspServer {
             if (structure) {
                 this.cache.set(textDocument, structure);
             }
-        } catch (e) {
-            logger.error(`Error validating ${fileType} file: ${e}`);
+        } catch (error) {
+            logger.error(`Validation failed for ${fileType} file`, error);
         }
 
         this.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
@@ -211,8 +211,8 @@ export class LspServer {
                 default:
                     return [];
             }
-        } catch (e) {
-            logger.error(`Completion failed: ${e}`);
+        } catch (error) {
+            logger.error('Completion failed', error);
             return [];
         }
     }
@@ -226,8 +226,8 @@ export class LspServer {
             }
             // Fall back to INCAR resolution
             return resolveIncarCompletion(item);
-        } catch (e) {
-            logger.error(`Error in onCompletionResolve: ${e}`);
+        } catch (error) {
+            logger.error('Completion resolve failed', error);
             return item;
         }
     }
@@ -260,8 +260,8 @@ export class LspServer {
                 default:
                     return null;
             }
-        } catch (e) {
-            logger.error(`Hover failed: ${e}`);
+        } catch (error) {
+            logger.error('Hover failed', error);
             return null;
         }
     }
@@ -269,20 +269,27 @@ export class LspServer {
     private onDocumentFormatting(params: DocumentFormattingParams) {
         try {
             const document = this.documents.get(params.textDocument.uri);
-            if (document && document.uri.match(/INCAR/i)) {
+            if (!document) return [];
+
+            const fileType = this.getFileType(document.uri);
+            if (fileType === 'incar') {
                 return formatIncar(document);
             }
-        } catch (e) {
-            logger.error(`Error in onDocumentFormatting: ${e} `);
+        } catch (error) {
+            logger.error('Document formatting failed', error);
         }
         return [];
     }
 
     private onCodeAction(params: CodeActionParams) {
         try {
-            return getIncarCodeActions(params.textDocument.uri, params.context.diagnostics);
-        } catch (e) {
-            logger.error(`Error in onCodeAction: ${e} `);
+            const fileType = this.getFileType(params.textDocument.uri);
+            if (fileType === 'incar') {
+                return getIncarCodeActions(params.textDocument.uri, params.context.diagnostics);
+            }
+            return [];
+        } catch (error) {
+            logger.error('Code action failed', error);
             return [];
         }
     }
@@ -314,8 +321,8 @@ export class LspServer {
                 default:
                     return { data: [] };
             }
-        } catch (e) {
-            logger.error(`SemanticTokens failed: ${e}`);
+        } catch (error) {
+            logger.error('Semantic tokens failed', error);
             return { data: [] };
         }
     }
@@ -325,16 +332,23 @@ export class LspServer {
             const document = this.documents.get(params.textDocument.uri);
             if (!document) return null;
 
+            const fileType = this.getFileType(document.uri);
             const cached = this.cache.get(document);
-            if (cached?.type === 'incar') return getIncarSymbols(document, cached.data);
-            if (cached?.type === 'poscar') return getPoscarSymbols(document, cached.data.lines);
 
-            // Fallback or specific check for files not cached yet
-            if (document.uri.match(/INCAR/i)) return getIncarSymbols(document, parseIncar(document));
-            if (document.uri.match(/POSCAR/i) || document.uri.match(/CONTCAR/i))
-                return getPoscarSymbols(document, parsePoscar(document).lines);
-        } catch (e) {
-            logger.error(`Error in onDocumentSymbol: ${e} `);
+            switch (fileType) {
+                case 'incar': {
+                    if (cached?.type === 'incar') return getIncarSymbols(document, cached.data);
+                    return getIncarSymbols(document, parseIncar(document));
+                }
+                case 'poscar': {
+                    if (cached?.type === 'poscar') return getPoscarSymbols(document, cached.data.lines);
+                    return getPoscarSymbols(document, parsePoscar(document).lines);
+                }
+                default:
+                    return null;
+            }
+        } catch (error) {
+            logger.error('Document symbol failed', error);
         }
         return null;
     }
@@ -344,14 +358,22 @@ export class LspServer {
             const document = this.documents.get(params.textDocument.uri);
             if (!document) return [];
 
+            const fileType = this.getFileType(document.uri);
             const cached = this.cache.get(document);
-            if (document.uri.match(/INCAR/i)) {
-                return getIncarFoldingRanges(document);
+
+            switch (fileType) {
+                case 'incar':
+                    return getIncarFoldingRanges(document);
+                case 'poscar': {
+                    const lines = document.getText().split(/\r?\n/);
+                    const poscarLines = cached?.type === 'poscar' ? cached.data.lines : undefined;
+                    return getFoldingRanges(lines, poscarLines);
+                }
+                default:
+                    return [];
             }
-            const lines = document.getText().split(/\r?\n/);
-            return getFoldingRanges(lines, cached?.type === 'poscar' ? cached.data.lines : undefined);
-        } catch (e) {
-            logger.error(`Error in onFoldingRanges: ${e} `);
+        } catch (error) {
+            logger.error('Folding ranges failed', error);
             return [];
         }
     }

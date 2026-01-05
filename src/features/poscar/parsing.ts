@@ -64,7 +64,7 @@ export interface PoscarDocument {
 /**
  * A single lexical token (e.g., a number, a keyword, a comment).
  */
-interface Token {
+export interface Token {
     type?: TokenType;
     range: Range;
     text: string;
@@ -298,32 +298,29 @@ export function parsePoscar(document: TextDocument): PoscarDocument {
      * @returns True if successful, False if validation failed or EOF.
      */
     function processLine(type: PoscarBlockType, repeat?: number, optionalTest?: (tokens: Token[]) => boolean): boolean {
-        const myRepeat = repeat ? repeat : 1;
-        let isOk = true;
-        for (let iter = 0; iter < myRepeat; ++iter) {
-            if (lineCount > nextLineIdx) {
-                const line = lines[nextLineIdx++];
-                const tokens = tokenizers[type](line);
-
-                // If an optional test exists (e.g. checking if species line is strings), fail if it doesn't match
-                if (optionalTest && !optionalTest(tokens)) {
-                    --nextLineIdx; // Backtrack!
-                    isOk = false;
-                } else {
-                    poscarLines.push({
-                        type: type,
-                        tokens: tokens,
-                        line: line
-                    });
-                    isOk &&= true;
-                }
+        const count = repeat ?? 1;
+        for (let iter = 0; iter < count; ++iter) {
+            // Check if we have more lines to read
+            if (nextLineIdx >= lineCount) {
+                return false; // Ran out of lines
             }
-            // Logic note: why isOk &&= true? It effectively preserves the 'true' state but doesn't handle false correctly?
-            // Actually, if isOk becomes false inside, it stays false.
-            // If the loop runs and lineCount < nextLineIdx, we don't return false explicitly here?
-            isOk &&= true;
+
+            const line = lines[nextLineIdx++];
+            const tokens = tokenizers[type](line);
+
+            // If an optional test exists (e.g. checking if species line is strings), fail if it doesn't match
+            if (optionalTest && !optionalTest(tokens)) {
+                --nextLineIdx; // Backtrack!
+                return false;
+            }
+
+            poscarLines.push({
+                type: type,
+                tokens: tokens,
+                line: line
+            });
         }
-        return isOk;
+        return true;
     }
 
     // --- Parsing State Machine ---

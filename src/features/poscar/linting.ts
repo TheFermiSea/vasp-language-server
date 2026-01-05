@@ -1,8 +1,7 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver-types';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { isNumber, isInteger, isLetters } from '../../utils/util';
-import { parsePoscar, PoscarBlockType, PoscarLine, PoscarDocument } from './parsing';
-import { countUntil } from '../../utils/util';
+import { isNumber, isInteger, isLetters, countUntil } from '../../utils/util';
+import { parsePoscar, PoscarBlockType, PoscarLine, PoscarDocument, Token } from './parsing';
 
 /**
  * Main validation function for POSCAR files.
@@ -19,8 +18,8 @@ export function validatePoscar(document: TextDocument, parsed?: PoscarDocument):
     // 1. Block-level validation
     // Apply specific linter rules to each line based on its parsed type.
     const diagnostics = poscarLines.flatMap((l) => {
-        const linter = (poscarBlockLinters as any)[l.type];
-        return linter ? linter(l) : [];
+        const linter = poscarBlockLinters[l.type];
+        return linter(l);
     });
 
     // 2. Cross-block validation
@@ -102,10 +101,8 @@ const poscarBlockLinters: Readonly<Record<PoscarBlockType, Linter>> = {
     speciesNames: (poscarLine) => {
         // Validate that all species names are just letters
         const diagnostics = poscarLine.tokens
-            .filter((t: any) => !isLetters(t.text))
-            .map((t: any) =>
-                createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error)
-            );
+            .filter((t) => !isLetters(t.text))
+            .map((t) => createDiagnostic(`Species name '${t.text}' is invalid.`, t.range, DiagnosticSeverity.Error));
         isEmptyLine(poscarLine, diagnostics);
         return diagnostics;
     },
@@ -241,7 +238,7 @@ function isEmptyLine(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): boolea
  */
 function countUntilComment(poscarLine: PoscarLine, diagnostics?: Diagnostic[]): number {
     const tokens = poscarLine.tokens;
-    const numVals = countUntil(tokens, (t: any) => t.type === 'comment');
+    const numVals = countUntil(tokens, (t: Token) => t.type === 'comment');
 
     // If there is "trailing garbage" that isn't explicitly marked as a comment (no # or !), warn the user.
     if (diagnostics && numVals < tokens.length && !/^[#!]/.test(tokens[numVals].text)) {

@@ -4,6 +4,7 @@ import { parsePotcar } from './parsing';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../../utils/logger';
 
 /**
  * Validates POTCAR consistency with POSCAR.
@@ -21,18 +22,14 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
         return diagnostics;
     }
 
-    // Attempt to find POSCAR in the same directory
+    // Attempt to find POSCAR in the same directory for cross-validation
     let filePath: string;
     try {
         filePath = fileURLToPath(document.uri);
     } catch {
-        // Fallback for non-standard URIs or if url module fails
-        filePath = decodeURIComponent(document.uri).replace(/^file:\/\/\/?/, '');
-        if (process.platform === 'win32' && !filePath.includes(':')) {
-            filePath = filePath.replace(/^\/*/, '');
-        } else if (process.platform !== 'win32' && !filePath.startsWith('/')) {
-            filePath = '/' + filePath;
-        }
+        // Non-file URIs (untitled documents, remote files) cannot be cross-validated
+        // Skip POSCAR validation gracefully rather than using brittle manual conversion
+        return diagnostics;
     }
 
     const dir = path.dirname(filePath);
@@ -96,8 +93,10 @@ export async function validatePotcar(document: TextDocument): Promise<Diagnostic
                     }
                 }
             }
-        } catch {
-            // Ignore FS errors
+        } catch (error) {
+            logger.warn(
+                `Could not read POSCAR for cross-validation: ${error instanceof Error ? error.message : 'unknown error'}`
+            );
         }
     }
 
