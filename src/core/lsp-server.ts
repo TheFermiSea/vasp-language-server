@@ -509,6 +509,9 @@ export class LspServer {
         }
 
         const structure = provider.parse(document);
+        if (!structure) {
+            return { error: `Failed to parse document for preview: ${fileType}` };
+        }
         this.cache.set(document, structure);
         return { uri, fileType: structure.type, structure };
     }
